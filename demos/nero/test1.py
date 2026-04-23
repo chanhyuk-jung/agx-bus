@@ -26,8 +26,6 @@ def create_demo_config():
             firmeware_version=NeroFW.DEFAULT,
             interface="agx_cando",
             channel="0",
-            # auto_set_motion_mode=False,
-            # enable_joint_limits=False,
             # receive_own_messages=True,
             # local_loopback=True,
         )
@@ -37,8 +35,6 @@ def create_demo_config():
             firmeware_version=NeroFW.DEFAULT,
             interface="socketcan",
             channel="can0",
-            # auto_set_motion_mode=False,
-            # enable_joint_limits=False,
             # receive_own_messages=True,
             # local_loopback=True,
         )
@@ -48,8 +44,6 @@ def create_demo_config():
             firmeware_version=NeroFW.DEFAULT,
             interface="slcan",
             channel="/dev/ttyACM0",
-            # auto_set_motion_mode=False,
-            # enable_joint_limits=False,
         )
     raise RuntimeError(
         "This demo currently supports Linux `socketcan`, Windows `agx_cando`, and macOS `slcan`."
@@ -71,7 +65,9 @@ print(end_effector.__doc__)
 # -------------------------- Config ---------------------------
 
 # robot.set_auto_set_motion_mode_enabled(False)
+# print(robot.get_auto_set_motion_mode_enabled())
 # robot.set_joint_limits_enabled(False)
+# print(robot.get_joint_limits_enabled())
 
 
 # -------------------------- Basic ---------------------------

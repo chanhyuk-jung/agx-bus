@@ -51,14 +51,8 @@ class ArmDriverAbstract(ArmDriverInterface):
         self._effector = None
         self._parser = self._Parser(self._ctx.fps)
         self._arm_ctx = ArmDriverContext(config, self._ctx, self._parser)
-        auto_set_motion_mode = self._config.get("auto_set_motion_mode", True)
-        if not isinstance(auto_set_motion_mode, bool):
-            raise ValueError("Config `auto_set_motion_mode` should be bool")
-        self._auto_set_motion_mode_enabled = auto_set_motion_mode
-        enable_joint_limits = self._config.get("enable_joint_limits", True)
-        if not isinstance(enable_joint_limits, bool):
-            raise ValueError("Config `enable_joint_limits` should be bool")
-        self._joint_limits_enabled = enable_joint_limits
+        self._auto_set_motion_mode_enabled = True
+        self._joint_limits_enabled = False
 
         # TCP
         self._tcp_offset_pose: List[float] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
@@ -425,11 +419,18 @@ class ArmDriverAbstract(ArmDriverInterface):
         if not isinstance(enabled, bool):
             raise ValueError("`enabled` should be bool")
         self._auto_set_motion_mode_enabled = enabled
-        self._config["auto_set_motion_mode"] = enabled
+
+    def get_auto_set_motion_mode_enabled(self) -> bool:
+        """Get the auto set motion mode enabled state."""
+        return self._auto_set_motion_mode_enabled
 
     def set_joint_limits_enabled(self, enabled: bool) -> None:
         """Enable/disable software joint-angle limits at runtime."""
         if not isinstance(enabled, bool):
             raise ValueError("`enabled` should be bool")
         self._joint_limits_enabled = enabled
-        self._config["enable_joint_limits"] = enabled
+
+    def get_joint_limits_enabled(self) -> bool:
+        """Get the joint limits enabled state."""
+        return self._joint_limits_enabled
+

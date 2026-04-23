@@ -71,7 +71,7 @@ def create_agx_arm_config(
     **kwargs
         Additional keyword arguments forwarded to the comm layer
         (e.g. ``channel``, ``interface``, ``bitrate``), and robot options
-        (e.g. ``joint_limits``, ``auto_set_motion_mode``).
+        (e.g. ``joint_limits``).
     """
     config = {
         "robot": robot,

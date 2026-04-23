@@ -2,8 +2,7 @@
 # -*- coding: utf-8 -*-
 """Modified Denavit–Hartenberg forward kinematics.
 
-Convention for each link ``i`` (parameters ``d, a, alpha, theta_offset`` in
-``configs/mdh_modified.json``)::
+Convention for each link ``i`` (parameters ``d, a, alpha, theta_offset``)::
 
     ^{i-1}T_i = R_x(alpha) * T_x(a) * R_z(theta) * T_z(d)
 
@@ -12,28 +11,13 @@ with ``theta = q_i + theta_offset`` and joint variable ``q_i`` in radians.
 Internal FK uses **row-major 16-float** matrices (one list per 4×4) to avoid
 nested lists and cut allocations in the chain multiply.
 """
-import json
 import math
-import pkgutil
-from typing import Any, Dict, List, Tuple
+from typing import List, Tuple
 
+from ..api.constants import ROBOT_MDH_PRESET
 from .tf import T16_to_pose6, matmul16_to
 
 MDH = Tuple[float, float, float, float]
-
-_TABLES_CACHE = None
-
-
-def _load_tables() -> Dict[str, Any]:
-    global _TABLES_CACHE
-    if _TABLES_CACHE is None:
-        raw = pkgutil.get_data("pyAgxArm", "configs/mdh_modified.json")
-        if raw is None:
-            raise RuntimeError(
-                "Package data missing: pyAgxArm/configs/mdh_modified.json"
-            )
-        _TABLES_CACHE = json.loads(raw.decode("utf-8"))
-    return _TABLES_CACHE
 
 
 def _link_mdh_write_16(
@@ -63,25 +47,15 @@ def _link_mdh_write_16(
 def get_mdh(robot: str) -> Tuple[MDH, ...]:
     """Return MDH ``(d, a, alpha, theta_offset)`` for *robot*.
 
-    The JSON file is read at most once per process; each *robot* is parsed once
-    and stored in a module-level cache.
+    Parameters are loaded from ``pyAgxArm.api.constants.ROBOT_MDH_PRESET``.
     """
-    tables = _load_tables()
-    if robot not in tables:
+    if robot not in ROBOT_MDH_PRESET:
         raise KeyError(
             f"No MDH table for robot={robot!r}. "
-            f"Expected one of: {', '.join(sorted(tables.keys()))}."
+            f"Expected one of: {', '.join(sorted(ROBOT_MDH_PRESET.keys()))}."
         )
-    joints = tables[robot]["joints"]
-    return tuple(
-        (
-            float(j["d"]),
-            float(j["a"]),
-            float(j["alpha"]),
-            float(j["theta_offset"]),
-        )
-        for j in joints
-    )
+    # 返回新的 tuple，避免外部错误修改全局常量
+    return tuple(tuple(link) for link in ROBOT_MDH_PRESET[robot])
 
 
 def fk_from_mdh(
