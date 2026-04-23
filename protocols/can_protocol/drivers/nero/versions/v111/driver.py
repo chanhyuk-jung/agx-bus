@@ -1,7 +1,7 @@
 from typing_extensions import Literal
 
 from .......utiles.numeric_codec import NumericCodec as nc
-from .......utiles.vaildator import Validator
+from .......utiles.validator import Validator
 from ...default.driver import Driver as DefaultDriver
 from .....msgs.nero.versions import ArmMsgFeedbackStatusEnumV111, ArmMsgModeCtrlV111
 from .parser import Parser, NeroV111DriverAPIProtoAdapter

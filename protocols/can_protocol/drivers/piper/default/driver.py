@@ -9,7 +9,7 @@ from ......utiles.numeric_codec import (
     NumericCodec as nc,
     RAD2DEG,
 )
-from ......utiles.vaildator import Validator
+from ......utiles.validator import Validator
 from ....msgs.piper.default import (
     ArmMsgModeCtrl,
     ArmMsgFeedbackJointStates,
