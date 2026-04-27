@@ -23,7 +23,6 @@ class DriverContext:
 
         self._read_th = None
         self._monitor_th = None
-        self._read_error = None
 
         self._comm_initialized = False
 
@@ -32,10 +31,12 @@ class DriverContext:
         self._req_stamp: Dict[str, float] = {}
 
     def has_comm_error(self) -> bool:
-        return self._read_error is not None
+        return bool(self.comm is not None and getattr(self.comm, "last_error", None) is not None)
     
     def get_comm_error(self):
-        return self._read_error
+        if self.comm is None:
+            return None
+        return getattr(self.comm, "last_error", None)
 
     def _resolve_comm_config(self, config: Optional[dict], comm: str) -> dict:
         source = config if config is not None else self._config
@@ -63,7 +64,8 @@ class DriverContext:
         if self.comm is None:
             raise RuntimeError(f"Failed to create {comm} communication instance.")
         self.comm.set_callback(self._run_parser_packet_funs)
-        self._read_error = None
+        if hasattr(self.comm, "last_error"):
+            self.comm.last_error = None
         self._comm_initialized = True
         return self.comm
 
@@ -98,7 +100,8 @@ class DriverContext:
             raise
 
         self.comm = comm
-        self._read_error = None
+        if hasattr(self.comm, "last_error"):
+            self.comm.last_error = None
         self._comm_initialized = True
         return self.comm
 
@@ -128,7 +131,8 @@ class DriverContext:
 
         self._read_stop_event.clear()
         self._monitor_stop_event.clear()
-        self._read_error = None
+        if hasattr(self.comm, "last_error"):
+            self.comm.last_error = None
 
         self._read_th = threading.Thread(
             target=self._read_loop, daemon=True
@@ -192,7 +196,6 @@ class DriverContext:
 
             self.comm = None
             self._comm_initialized = False
-            self._read_error = None
         self._req_stamp.clear()
 
     def _read_loop(self):
@@ -200,10 +203,9 @@ class DriverContext:
             try:
                 self.comm.recv()
             except Exception as exc:
-                self._read_error = exc
                 self._read_stop_event.set()
                 self._monitor_stop_event.set()
-                raise
+                raise exc
 
     def _monitor_loop(self):
         while not self._monitor_stop_event.is_set():

@@ -56,6 +56,7 @@ class CanCommImpl(CanCommBase):
         self.recv_bus = None
         self.send_bus = None
         self.sysinfo: CanSystemInfoBase = None
+        self.last_error = None
         self._config = config.copy()
         self._type = comm_type
         self._channel = self._config["channel"]
@@ -161,7 +162,9 @@ class CanCommImpl(CanCommBase):
             self.send_bus = self.recv_bus
             self._is_connected = True
             self._is_stopped = False
-        except:
+            self.last_error = None
+        except Exception as exc:
+            self.last_error = exc
             self.close()
             raise can.CanInitializationError(
                 "Failed to open CAN bus "
@@ -192,12 +195,14 @@ class CanCommImpl(CanCommBase):
 
         try:
             self.send_bus.send(msg, timeout)
+            self.last_error = None
         except Exception as exc:
+            self.last_error = exc
             err_kind = self._classify_can_error(exc)
             if err_kind in (errno.ENOBUFS, errno.ENETDOWN):
                 return
             self.close()
-            raise
+            raise self.last_error
 
     def recv(self):
         if self.recv_bus is None:
@@ -208,18 +213,22 @@ class CanCommImpl(CanCommBase):
             msg = self.recv_bus.recv(self._timeout)
             if msg is not None:
                 if not msg.is_error_frame:
+                    self.last_error = None
                     self._trigger_callback(msg)
                     return msg
         except Exception as exc:
+            self.last_error = exc
             err_kind = self._classify_can_error(exc)
             if err_kind in (errno.ENOBUFS, errno.ENETDOWN):
                 return
             self.close()
-            raise
+            raise self.last_error
 
     def check_can(self):
+        self.last_error = None
         if not self.sysinfo.is_exists(self._channel):
-            raise ValueError("Device '%s' does not exist." % self._channel)
+            self.last_error = ValueError("Device '%s' does not exist." % self._channel)
+            raise self.last_error
         if not self.sysinfo.is_up(self._channel):
             print("[WARN] Device is DOWN.")
         actual_bitrate = self.sysinfo.get_bitrate(self._channel)
