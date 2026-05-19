@@ -1,3 +1,5 @@
+from typing_extensions import Literal
+
 from ....piper.versions.v188.driver import Driver as PiperDriverV188
 
 
@@ -28,4 +30,37 @@ class Driver(PiperDriverV188):
     - Some `set_*` APIs additionally verify by reading back state; their
       docstrings will mention the verification method if applicable.
     """
-    pass
+
+    def move_mit(
+        self,
+        joint_index: Literal[1, 2, 3, 4, 5, 6],
+        p_des: float = 0.0,
+        v_des: float = 0.0,
+        kp: float = 10.0,
+        kd: float = 0.8,
+        t_ff: float = 0.0,
+    ):
+        if joint_index in [4, 5]:
+            p_des = -p_des
+            v_des = -v_des
+            t_ff = -t_ff
+        super().move_mit(
+            joint_index,
+            p_des=p_des,
+            v_des=v_des,
+            kp=kp,
+            kd=kd,
+            t_ff=t_ff,
+        )
+
+    def move_cpv_pos(
+        self,
+        joint_index: Literal[1, 2, 3, 4, 5, 6],
+        pos: float,
+    ) -> None:
+        if joint_index in [4, 5]:
+            pos = -pos
+        super().move_cpv_pos(
+            joint_index,
+            pos,
+        )
