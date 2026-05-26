@@ -11,8 +11,6 @@ from ...piper.default.parser import Codec as PiperCodec
 from ...piper.default.parser import Parser as PiperParser
 from ....msgs.nero.default import (
     ArmMsgModeCtrl,
-    ArmMsgCPVSettingsAndQueries7,
-    ArmMsgFeedbackCPVResponse7,
     ArmMsgFeedbackJointStates7,
     ArmMsgJointCtrl7,
     ArmMsgJointMitCtrl7,
@@ -54,7 +52,6 @@ class NeroDefaultDriverAPIOptions(DriverAPIOptions):
         C = "c"
         MIT = "mit"
         JS = "js"
-        CPV = "cpv"
 
 class NeroDefaultDriverAPIProtoAdapter(DriverAPIProtoAdapter):
 
@@ -65,7 +62,6 @@ class NeroDefaultDriverAPIProtoAdapter(DriverAPIProtoAdapter):
         NeroDefaultDriverAPIOptions.MOTION_MODE.C: ArmMsgModeCtrl.Enums.MotionMode.C,
         NeroDefaultDriverAPIOptions.MOTION_MODE.MIT: ArmMsgModeCtrl.Enums.MotionMode.MIT,
         NeroDefaultDriverAPIOptions.MOTION_MODE.JS: ArmMsgModeCtrl.Enums.MotionMode.J,
-        NeroDefaultDriverAPIOptions.MOTION_MODE.CPV: ArmMsgModeCtrl.Enums.MotionMode.CPV,
     }
 
     _MIT_CODE = {
@@ -132,11 +128,6 @@ class Parser(PiperParser):
         7: ArmMsgJointMitCtrl7,
     }
 
-    _MSG_CPVSettingsAndQueriesByIndex: Dict[int, Type[AttributeBase]] = {
-        **PiperParser._MSG_CPVSettingsAndQueriesByIndex,
-        7: ArmMsgCPVSettingsAndQueries7,
-    }
-
     if TYPE_CHECKING:
         arm_status: Optional[MessageAbstract[ArmMsgFeedbackStatus]]
         joint_7: Optional[MessageAbstract[ArmMsgFeedbackJointStates7]]
@@ -161,8 +152,6 @@ class Parser(PiperParser):
         leader_joint_6: Optional[MessageAbstract[ArmMsgFeedbackLeaderJointStates6]]
         leader_joint_7: Optional[MessageAbstract[ArmMsgFeedbackLeaderJointStates7]]
 
-        cpv_response_7: Optional[MessageAbstract[ArmMsgFeedbackCPVResponse7]]
-
     def __init__(self, fps_manager: FPSManager, codec: Optional[Codec] = None):
         # Reuse Piper Parser init; only replace codec with Nero version.
         super().__init__(fps_manager=fps_manager, codec=codec or Codec())
@@ -175,7 +164,9 @@ class Parser(PiperParser):
 
         # Nero 精简协议：移除Nero不支持的接收映射
         for can_id in (0x155, 0x156, 0x157,
-                       0x476,
+                       0x181, 0x182, 0x183,
+                       0x184, 0x185, 0x186,
+                       0x187, 0x476,
                        ):
             rx.pop(can_id, None)
 
@@ -186,11 +177,6 @@ class Parser(PiperParser):
                     "crash_protection_rating",
                     ArmMsgFeedbackCrashProtectionRating,
                     self._codec.decode_47B_crash_protection_rating,
-                ),
-                0x187: (
-                    "cpv_response_7",
-                    ArmMsgFeedbackCPVResponse7,
-                    self._codec.decode_cpv_response,
                 ),
                 0x251: (
                     "motor_state_1",
@@ -307,7 +293,10 @@ class Parser(PiperParser):
         tx = super()._build_tx_map()
 
         # Nero 精简协议：移除Nero不支持的发送映射
-        remove_can_ids = {0x191}
+        remove_can_ids = {0x191, 0x181, 0x182,
+                          0x183, 0x184, 0x185,
+                          0x186, 0x187,
+                        }
         for msg_type, (can_id, _enc) in list(tx.items()):
             if can_id in remove_can_ids:
                 tx.pop(msg_type, None)
@@ -322,10 +311,6 @@ class Parser(PiperParser):
                 ArmMsgJointMitCtrl7.type_: (
                     0x160,
                     self._codec.pack_joint_mit_ctrl
-                ),
-                ArmMsgCPVSettingsAndQueries7.type_: (
-                    0x187,
-                    self._codec.encode_cpv_settings_and_queries,
                 ),
             }
         )

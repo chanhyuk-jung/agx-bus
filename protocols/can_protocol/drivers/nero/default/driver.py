@@ -8,10 +8,9 @@ from ....msgs.core import MessageAbstract
 from ......utiles.numeric_codec import (
     NumericCodec as nc,
     RAD2DEG,
-    DEG2RAD,
+    PI,
 )
 from ......utiles.validator import Validator
-from ....msgs.piper.default import ArmMsgFeedbackCPVResponse
 from ....msgs.nero.default import (
     ArmMsgModeCtrl,
     ArmMsgFeedbackJointStates,
@@ -95,7 +94,7 @@ class Driver(ArmDriverAbstract):
         self._send_msg(self._msg_mode)
 
     def _maybe_set_motion_mode(
-        self, motion_mode: Literal['p', 'j', 'l', 'c', 'mit', 'js', 'cpv']
+        self, motion_mode: Literal['p', 'j', 'l', 'c', 'mit', 'js']
     ) -> None:
         """Set motion mode only when auto mode-setting is enabled."""
         if self._auto_set_motion_mode_enabled:
@@ -103,6 +102,13 @@ class Driver(ArmDriverAbstract):
 
     def _deal_move_p_msgs(self, pose: List[float]):
         """Get pose control messages."""
+        # TODO: remove this after the bug is fixed
+        # Correcting incorrect postures in version 1.10
+        if len(pose) == 6:
+            pose[3] *= -1
+            pose[4] *= -1
+            pose[5] = pose[5] % (2 * PI) - PI
+
         pose = Validator.clamp_pose6(
             pose,
             name="flange_pose"
@@ -289,11 +295,13 @@ class Driver(ArmDriverAbstract):
         if getattr(self._parser, "end_pose_zrx", None) is not None:
             end_pose = self._parser.end_pose_zrx
             self._end_pose.msg[2] = end_pose.msg.Z_axis
-            self._end_pose.msg[3] = end_pose.msg.RX_axis
+            # TODO: Restore direct assignment after bug fix.
+            # Correcting incorrect postures in version 1.10
+            self._end_pose.msg[3] = -end_pose.msg.RX_axis
         if getattr(self._parser, "end_pose_ryrz", None) is not None:
             end_pose = self._parser.end_pose_ryrz
-            self._end_pose.msg[4] = end_pose.msg.RY_axis
-            self._end_pose.msg[5] = end_pose.msg.RZ_axis
+            self._end_pose.msg[4] = -end_pose.msg.RY_axis
+            self._end_pose.msg[5] = (end_pose.msg.RZ_axis + 2 * PI) % (2 * PI) - PI
         if end_pose is not None:
             self._end_pose.timestamp = end_pose.timestamp
             self._end_pose.hz = self._ctx.fps.get_fps(end_pose.msg_type)
@@ -528,6 +536,9 @@ class Driver(ArmDriverAbstract):
         ] = getattr(self._parser, f"motor_state_{joint_index}", None)
         if motor_state is not None:
             motor_state.hz = self._ctx.fps.get_fps(motor_state.msg_type)
+            # TODO: remove this after the bug is fixed
+            motor_state.msg.velocity = 0.0
+            motor_state.msg.current *= -1
             return motor_state
         else:
             return None
@@ -773,26 +784,25 @@ class Driver(ArmDriverAbstract):
 
     def set_motion_mode(
         self,
-        motion_mode: Literal['p', 'j', 'l', 'c', 'mit', 'js', 'cpv'] = 'p'
+        motion_mode: Literal['p', 'j', 'l', 'c', 'mit', 'js'] = 'p'
     ):
         """Set movement mode and MIT mode.
 
         Parameters
         ----------
-        `motion_mode`: Literal['p', 'j', 'l', 'c', 'mit', 'js', 'cpv']
+        `motion_mode`: Literal['p', 'j', 'l', 'c', 'mit', 'js']
         - `OPTIONS.MOTION_MODE.P`: move p
         - `OPTIONS.MOTION_MODE.J`: move j
         - `OPTIONS.MOTION_MODE.L`: move l
         - `OPTIONS.MOTION_MODE.C`: move c
         - `OPTIONS.MOTION_MODE.MIT`: move mit (MIT)
         - `OPTIONS.MOTION_MODE.JS`: move js (MIT)
-        - `OPTIONS.MOTION_MODE.CPV`: move cpv (CPV)
 
         Raises
         ------
         ValueError
             If `motion_mode` is not in
-            ['p', 'j', 'l', 'c', 'mit', 'js', 'cpv'].
+            ['p', 'j', 'l', 'c', 'mit', 'js'].
 
         Examples
         --------
@@ -1092,6 +1102,10 @@ class Driver(ArmDriverAbstract):
                 f"joint {joint_index} limits [{lower_limit}, {upper_limit}] rad. "
             )
             p_des = Validator.clamp(p_des, lower_limit, upper_limit)
+
+        # TODO: remove this after the bug is fixed
+        if joint_index != 6:
+            v_des *= -1
 
         if not Validator.is_within_limit(v_des, -45.0, 45.0):
             print(
@@ -1586,28 +1600,6 @@ class Driver(ArmDriverAbstract):
             stamp_attr="crash_protection_rating",
         )
 
-    def calibrate_joint(
-        self,
-        joint_index: Literal[1, 2, 3, 4, 5, 6, 7, 255] = 255,
-    ):
-        """Calibrate a joint by setting current position as zero.
-
-        Parameters
-        ----------
-        `joint_index`: Literal[1, 2, 3, 4, 5, 6, 7, 255]
-        - 1~7: calibrate the specified joint without offset.
-        - 255: calibrate all joints with offset (controller-side behavior).
-        """
-        if joint_index not in self._JOINT_INDEX_LIST:
-            raise ValueError(f"Joint index should be {self._JOINT_INDEX_LIST}")
-
-        self._send_msg(
-            self._MSG_JointConfig(
-                joint_index=joint_index,
-                set_motor_current_pos_as_zero=0xAE,
-            )
-        )
-
     def clear_joint_error(
         self,
         joint_index: Literal[1, 2, 3, 4, 5, 6, 7, 255] = 255,
@@ -1951,650 +1943,3 @@ class Driver(ArmDriverAbstract):
             stamp_key=f"set_crash_protection_rating:{joint_index}",
         )
 
-    # -------------------------- CPV --------------------------
-
-    _CPV_VALUE_SCALE = {
-        'po': (1e-3 * DEG2RAD, 1.0 / (1e-3 * DEG2RAD)),
-        'sp': (1e-3, 1e3),
-        'ac': (1e-2, 1e2),
-        'dc': (1e-2, 1e2),
-        'vv': (1e-3, 1e3),
-        'pp': (1e-2, 1e2),
-        'kp': (1e-2, 1e2),
-        'ki': (1e-2, 1e2),
-    }
-
-    def _cpv_get_scale(
-        self,
-        type_: Literal['po', 'sp', 'ac', 'dc', 'vv', 'pp', 'kp', 'ki']
-    ) -> float:
-        return self._CPV_VALUE_SCALE[type_][0]
-
-    def _cpv_set_scale(
-        self,
-        type_: Literal['po', 'sp', 'ac', 'dc', 'vv', 'pp', 'kp', 'ki']
-    ) -> float:
-        return self._CPV_VALUE_SCALE[type_][1]
-    
-    def _cpv_po_joints_flag(
-        self,
-        joint_index: Literal[1, 2, 3, 4, 5, 6, 7]
-    ) -> None:
-        if getattr(self._parser, "_cpv_po_joints_flag", None) is None:
-            self._parser._cpv_po_joints_flag = [True] * self._JOINT_NUMS
-        
-        arm_status: Optional[MessageAbstract[ArmMsgFeedbackStatus]] = getattr(
-            self._parser, "arm_status", None
-        )
-        if (arm_status is not None
-            and (self._parser.arm_status.msg.ctrl_mode != self.ARM_STATUS.CtrlMode.CAN_CTRL
-                 or self._parser.arm_status.msg.mode_feedback in [
-                     self.ARM_STATUS.ModeFeedback.MOVE_J,
-                     self.ARM_STATUS.ModeFeedback.MOVE_MIT]
-            ) and not self._parser._cpv_po_joints_flag[joint_index - 1]):
-            self._parser._cpv_po_joints_flag = [True] * self._JOINT_NUMS
-
-    def _move_cpv(
-        self,
-        joint_index: Literal[1, 2, 3, 4, 5, 6, 7],
-        type_: Literal['po', 'sp'],
-        value: float,
-    ) -> None:
-        if joint_index not in self._JOINT_INDEX_LIST[:-1]:
-            raise ValueError(
-                f"Joint index should be {self._JOINT_INDEX_LIST[:-1]}")
-
-        msg = self._parser._make_cpv_settings_and_queries_msg(
-            joint_index=joint_index,
-            mode='w',
-            type_=type_,
-            value=round(value * self._cpv_set_scale(type_)),
-        )
-        self._cpv_po_joints_flag(joint_index)
-        self._maybe_set_motion_mode('cpv')
-        self._send_msg(msg)
-
-        if type_ == "po" and self._parser._cpv_po_joints_flag[joint_index - 1]:
-            self._send_msg(msg)
-            self._parser._cpv_po_joints_flag[joint_index - 1] = False
-
-    def _get_cpv(
-        self,
-        joint_index: Literal[1, 2, 3, 4, 5, 6, 7],
-        type_: Literal['po', 'sp', 'ac', 'dc', 'vv', 'pp', 'kp', 'ki'],
-        timeout: float = 1.0,
-        min_interval: float = 1.0,
-    ) -> Optional[float]:
-        self._ctx._validate_timeout(timeout)
-        if joint_index not in self._JOINT_INDEX_LIST[:-1]:
-            raise ValueError(
-                f"Joint index should be {self._JOINT_INDEX_LIST[:-1]}")
-
-        def request() -> None:
-            self._cpv_po_joints_flag(joint_index)
-            self._maybe_set_motion_mode('cpv')
-            self._send_msg(
-                self._parser._make_cpv_settings_and_queries_msg(
-                    joint_index=joint_index,
-                    mode='r',
-                    type_=type_,
-                    value=0,
-                )
-            )
-
-        def get_msg() -> Optional[MessageAbstract[ArmMsgFeedbackCPVResponse]]:
-            return getattr(
-                self._parser,
-                f"cpv_response_{joint_index}",
-                None
-            )
-
-        def is_ready() -> bool:
-            msg = get_msg()
-            return (
-                msg is not None
-                and msg.msg.type_value.get(type_) is not None
-            )
-
-        def get_value() -> Optional[float]:
-            msg = get_msg()
-            if msg is None:
-                return None
-            return msg.msg.type_value.get(type_) * self._cpv_get_scale(type_)
-
-        def clear() -> None:
-            msg = get_msg()
-            if msg is not None:
-                msg.msg.type_value.pop(type_, None)
-
-        return self._ctx._request_and_get(
-            request=request,
-            is_ready=is_ready,
-            get_value=get_value,
-            clear=clear,
-            timeout=timeout,
-            min_interval=min_interval,
-            stamp_attr=f"get_cpv_{type_}:{joint_index}",
-        )
-
-    def _set_cpv(
-        self,
-        joint_index: Literal[1, 2, 3, 4, 5, 6, 7],
-        type_: Literal['ac', 'dc', 'vv', 'pp', 'kp', 'ki'],
-        value: float,
-        get: Callable[[Literal[1, 2, 3, 4, 5, 6, 7], float, float], Optional[float]],
-        timeout: float = 1.0,
-    ) -> bool:
-        self._ctx._validate_timeout(timeout)
-        if joint_index not in self._JOINT_INDEX_LIST[:-1]:
-            raise ValueError(
-                f"Joint index should be {self._JOINT_INDEX_LIST[:-1]}")
-
-        value = round(abs(value) * self._cpv_set_scale(type_))
-
-        def request() -> None:
-            self._cpv_po_joints_flag(joint_index)
-            self._maybe_set_motion_mode('cpv')
-            self._send_msg(
-                self._parser._make_cpv_settings_and_queries_msg(
-                    joint_index=joint_index,
-                    mode='w',
-                    type_=type_,
-                    value=value,
-                )
-            )
-
-        def check() -> bool:
-            res = get(joint_index)
-            if res is None:
-                return False
-            return round(abs(res) * self._cpv_set_scale(type_)) == value
-
-        return bool(self._ctx._request_and_get(
-            request=request,
-            is_ready=check,
-            get_value=lambda: True,
-            timeout=timeout,
-            min_interval=0.0,
-            stamp_attr=f"set_cpv_{type_}:{joint_index}",
-        ))
-
-    def move_cpv_pos(
-        self,
-        joint_index: Literal[1, 2, 3, 4, 5, 6, 7],
-        pos: float,
-    ) -> None:
-        """Command joint position in CPV motion mode.
-
-        Parameters
-        ----------
-        `joint_index`: Literal[1, 2, 3, 4, 5, 6, 7]
-
-        `pos`: float
-        - Target joint angle in radians.
-        """
-        lower_limit, upper_limit = self._mit_position_limits(joint_index)
-        if not Validator.is_within_limit(pos, lower_limit, upper_limit):
-            print(
-                f"Warning: Desired position {pos} rad is outside "
-                f"joint {joint_index} limits [{lower_limit}, {upper_limit}] rad. "
-            )
-            pos = Validator.clamp(pos, lower_limit, upper_limit)
-
-        self._move_cpv(
-            joint_index=joint_index,
-            type_='po',
-            value=pos,
-        )
-
-    def move_cpv_vel(
-        self,
-        joint_index: Literal[1, 2, 3, 4, 5, 6, 7],
-        vel: float,
-    ) -> None:
-        """Command joint velocity reference in CPV motion mode.
-
-        Parameters
-        ----------
-        `joint_index`: Literal[1, 2, 3, 4, 5, 6, 7]
-
-        `vel`: float
-        - Desired joint velocity in rad/s.
-        """
-        self._move_cpv(
-            joint_index=joint_index,
-            type_='sp',
-            value=vel,
-        )
-
-    def get_cpv_pos(
-        self,
-        joint_index: Literal[1, 2, 3, 4, 5, 6, 7],
-        timeout: float = 1.0,
-        min_interval: float = 1.0,
-    ) -> Optional[float]:
-        """Read joint position from the CPV feedback channel.
-
-        Issues a CPV read request and waits for the corresponding response
-        field on the parser.
-
-        Parameters
-        ----------
-        `joint_index`: Literal[1, 2, 3, 4, 5, 6, 7]
-
-        `timeout`: float, optional
-        - Wait time in seconds. Default is 1.0.
-
-        `min_interval`: float, optional
-        - Minimum spacing between requests. Default is 1.0.
-
-        Returns
-        -------
-        Optional[float]
-            Joint angle in radians, or None on timeout.
-        """
-        return self._get_cpv(
-            joint_index=joint_index,
-            type_='po',
-            timeout=timeout,
-            min_interval=min_interval,
-        )
-
-    def get_cpv_vel(
-        self,
-        joint_index: Literal[1, 2, 3, 4, 5, 6, 7],
-        timeout: float = 1.0,
-        min_interval: float = 1.0,
-    ) -> Optional[float]:
-        """Read joint velocity from the CPV feedback channel.
-
-        Issues a CPV read request and waits for the corresponding response
-        field on the parser.
-
-        Parameters
-        ----------
-        `joint_index`: Literal[1, 2, 3, 4, 5, 6, 7]
-
-        `timeout`: float, optional
-        - Wait time in seconds. Default is 1.0.
-
-        `min_interval`: float, optional
-        - Minimum spacing between requests. Default is 1.0.
-
-        Returns
-        -------
-        Optional[float]
-            Velocity in rad/s, or None on timeout.
-        """
-        return self._get_cpv(
-            joint_index=joint_index,
-            type_='sp',
-            timeout=timeout,
-            min_interval=min_interval,
-        )
-
-    def get_cpv_acc(
-        self,
-        joint_index: Literal[1, 2, 3, 4, 5, 6, 7],
-        timeout: float = 1.0,
-        min_interval: float = 1.0,
-    ) -> Optional[float]:
-        """Read CPV joint acceleration parameter.
-
-        Parameters
-        ----------
-        `joint_index`: Literal[1, 2, 3, 4, 5, 6, 7]
-
-        `timeout`: float, optional
-        - Wait time in seconds. Default is 1.0.
-
-        `min_interval`: float, optional
-        - Minimum spacing between requests. Default is 1.0.
-
-        Returns
-        -------
-        Optional[float]
-            Acceleration in rad/s^2, or None on timeout.
-        """
-        return self._get_cpv(
-            joint_index=joint_index,
-            type_='ac',
-            timeout=timeout,
-            min_interval=min_interval,
-        )
-
-    def get_cpv_dcc(
-        self,
-        joint_index: Literal[1, 2, 3, 4, 5, 6, 7],
-        timeout: float = 1.0,
-        min_interval: float = 1.0,
-    ) -> Optional[float]:
-        """Read CPV joint deceleration parameter.
-
-        Parameters
-        ----------
-        `joint_index`: Literal[1, 2, 3, 4, 5, 6, 7]
-
-        `timeout`: float, optional
-        - Wait time in seconds. Default is 1.0.
-
-        `min_interval`: float, optional
-        - Minimum spacing between requests. Default is 1.0.
-
-        Returns
-        -------
-        Optional[float]
-            Deceleration in rad/s^2, or None on timeout.
-        """
-        return self._get_cpv(
-            joint_index=joint_index,
-            type_='dc',
-            timeout=timeout,
-            min_interval=min_interval,
-        )
-
-    def get_cpv_cv(
-        self,
-        joint_index: Literal[1, 2, 3, 4, 5, 6, 7],
-        timeout: float = 1.0,
-        min_interval: float = 1.0,
-    ) -> Optional[float]:
-        """Read CPV contour / profile velocity.
-
-        Parameters
-        ----------
-        `joint_index`: Literal[1, 2, 3, 4, 5, 6, 7]
-
-        `timeout`: float, optional
-        - Wait time in seconds. Default is 1.0.
-
-        `min_interval`: float, optional
-        - Minimum spacing between requests. Default is 1.0.
-
-        Returns
-        -------
-        Optional[float]
-            Contour velocity in rad/s, or None on timeout.
-        """
-        return self._get_cpv(
-            joint_index=joint_index,
-            type_='vv',
-            timeout=timeout,
-            min_interval=min_interval,
-        )
-
-    def get_cpv_pp(
-        self,
-        joint_index: Literal[1, 2, 3, 4, 5, 6, 7],
-        timeout: float = 1.0,
-        min_interval: float = 1.0,
-    ) -> Optional[float]:
-        """Read CPV position-loop proportional gain.
-
-        Parameters
-        ----------
-        `joint_index`: Literal[1, 2, 3, 4, 5, 6, 7]
-
-        `timeout`: float, optional
-        - Wait time in seconds. Default is 1.0.
-
-        `min_interval`: float, optional
-        - Minimum spacing between requests. Default is 1.0.
-
-        Returns
-        -------
-        Optional[float]
-            Position-loop Kp, or None on timeout.
-        """
-        return self._get_cpv(
-            joint_index=joint_index,
-            type_='pp',
-            timeout=timeout,
-            min_interval=min_interval,
-        )
-
-    def get_cpv_kp(
-        self,
-        joint_index: Literal[1, 2, 3, 4, 5, 6, 7],
-        timeout: float = 1.0,
-        min_interval: float = 1.0,
-    ) -> Optional[float]:
-        """Read CPV velocity-loop proportional gain.
-
-        Parameters
-        ----------
-        `joint_index`: Literal[1, 2, 3, 4, 5, 6, 7]
-
-        `timeout`: float, optional
-        - Wait time in seconds. Default is 1.0.
-
-        `min_interval`: float, optional
-        - Minimum spacing between requests. Default is 1.0.
-
-        Returns
-        -------
-        Optional[float]
-            Velocity-loop Kp, or None on timeout.
-        """
-        return self._get_cpv(
-            joint_index=joint_index,
-            type_='kp',
-            timeout=timeout,
-            min_interval=min_interval,
-        )
-
-    def get_cpv_ki(
-        self,
-        joint_index: Literal[1, 2, 3, 4, 5, 6, 7],
-        timeout: float = 1.0,
-        min_interval: float = 1.0,
-    ) -> Optional[float]:
-        """Read CPV velocity-loop integral gain.
-
-        Parameters
-        ----------
-        `joint_index`: Literal[1, 2, 3, 4, 5, 6, 7]
-
-        `timeout`: float, optional
-        - Wait time in seconds. Default is 1.0.
-
-        `min_interval`: float, optional
-        - Minimum spacing between requests. Default is 1.0.
-
-        Returns
-        -------
-        Optional[float]
-            Velocity-loop Ki, or None on timeout.
-        """
-        return self._get_cpv(
-            joint_index=joint_index,
-            type_='ki',
-            timeout=timeout,
-            min_interval=min_interval,
-        )
-
-    def set_cpv_acc(
-        self,
-        joint_index: Literal[1, 2, 3, 4, 5, 6, 7],
-        acc: float,
-        timeout: float = 1.0,
-    ) -> bool:
-        """Set CPV joint acceleration and verify by read-back.
-
-        Parameters
-        ----------
-        `joint_index`: Literal[1, 2, 3, 4, 5, 6, 7]
-
-        `acc`: float
-        - Acceleration in rad/s^2.
-
-        `timeout`: float, optional
-        - Wait time in seconds. Default is 1.0.
-
-        Returns
-        -------
-        bool
-            True if the read-back equals ``abs(acc)``, False otherwise.
-        """
-        return self._set_cpv(
-            joint_index=joint_index,
-            type_='ac',
-            value=acc,
-            get=self.get_cpv_acc,
-            timeout=timeout,
-        )
-
-    def set_cpv_dcc(
-        self,
-        joint_index: Literal[1, 2, 3, 4, 5, 6, 7],
-        dcc: float,
-        timeout: float = 1.0,
-    ) -> bool:
-        """Set CPV joint deceleration and verify by read-back.
-
-        Parameters
-        ----------
-        `joint_index`: Literal[1, 2, 3, 4, 5, 6, 7]
-
-        `dcc`: float
-        - Deceleration in rad/s^2.
-
-        `timeout`: float, optional
-        - Wait time in seconds. Default is 1.0.
-
-        Returns
-        -------
-        bool
-            True if the read-back equals ``abs(dcc)``, False otherwise.
-        """
-        return self._set_cpv(
-            joint_index=joint_index,
-            type_='dc',
-            value=dcc,
-            get=self.get_cpv_dcc,
-            timeout=timeout,
-        )
-
-    def set_cpv_cv(
-        self,
-        joint_index: Literal[1, 2, 3, 4, 5, 6, 7],
-        cv: float,
-        timeout: float = 1.0,
-    ) -> bool:
-        """Set CPV contour velocity and verify by read-back.
-
-        Parameters
-        ----------
-        `joint_index`: Literal[1, 2, 3, 4, 5, 6, 7]
-
-        `cv`: float
-        - Contour velocity in rad/s.
-
-        `timeout`: float, optional
-        - Wait time in seconds. Default is 1.0.
-
-        Returns
-        -------
-        bool
-            True if the read-back equals ``abs(cv)``, False otherwise.
-        """
-        return self._set_cpv(
-            joint_index=joint_index,
-            type_='vv',
-            value=cv,
-            get=self.get_cpv_cv,
-            timeout=timeout,
-        )
-
-    def set_cpv_pp(
-        self,
-        joint_index: Literal[1, 2, 3, 4, 5, 6, 7],
-        pp: float,
-        timeout: float = 1.0,
-    ) -> bool:
-        """Set CPV position-loop Kp and verify by read-back.
-
-        Parameters
-        ----------
-        `joint_index`: Literal[1, 2, 3, 4, 5, 6, 7]
-
-        `pp`: float
-        - Position-loop proportional gain.
-
-        `timeout`: float, optional
-        - Wait time in seconds. Default is 1.0.
-
-        Returns
-        -------
-        bool
-            True if the read-back equals ``abs(pp)``, False otherwise.
-        """
-        return self._set_cpv(
-            joint_index=joint_index,
-            type_='pp',
-            value=pp,
-            get=self.get_cpv_pp,
-            timeout=timeout,
-        )
-
-    def set_cpv_kp(
-        self,
-        joint_index: Literal[1, 2, 3, 4, 5, 6, 7],
-        kp: float,
-        timeout: float = 1.0,
-    ) -> bool:
-        """Set CPV velocity-loop Kp and verify by read-back.
-
-        Parameters
-        ----------
-        `joint_index`: Literal[1, 2, 3, 4, 5, 6, 7]
-
-        `kp`: float
-        - Velocity-loop proportional gain.
-
-        `timeout`: float, optional
-        - Wait time in seconds. Default is 1.0.
-
-        Returns
-        -------
-        bool
-            True if the read-back equals ``abs(kp)``, False otherwise.
-        """
-        return self._set_cpv(
-            joint_index=joint_index,
-            type_='kp',
-            value=kp,
-            get=self.get_cpv_kp,
-            timeout=timeout,
-        )
-
-    def set_cpv_ki(
-        self,
-        joint_index: Literal[1, 2, 3, 4, 5, 6, 7],
-        ki: float,
-        timeout: float = 1.0,
-    ) -> bool:
-        """Set CPV velocity-loop Ki and verify by read-back.
-
-        Parameters
-        ----------
-        `joint_index`: Literal[1, 2, 3, 4, 5, 6, 7]
-
-        `ki`: float
-        - Velocity-loop integral gain.
-
-        `timeout`: float, optional
-        - Wait time in seconds. Default is 1.0.
-
-        Returns
-        -------
-        bool
-            True if the read-back equals ``abs(ki)``, False otherwise.
-        """
-        return self._set_cpv(
-            joint_index=joint_index,
-            type_='ki',
-            value=ki,
-            get=self.get_cpv_ki,
-            timeout=timeout,
-        )

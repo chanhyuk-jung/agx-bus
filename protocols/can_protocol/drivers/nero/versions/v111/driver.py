@@ -1,8 +1,17 @@
+from typing import List, Optional
 from typing_extensions import Literal
 
-from .......utiles.numeric_codec import NumericCodec as nc
+from .......utiles.numeric_codec import (
+    NumericCodec as nc,
+    RAD2DEG,
+)
 from .......utiles.validator import Validator
 from ...default.driver import Driver as DefaultDriver
+from .....msgs.core import MessageAbstract
+from .....msgs.nero.default import (
+    ArmMsgFeedbackEndPose,
+    ArmMsgFeedbackHighSpd,
+)
 from .....msgs.nero.versions import ArmMsgFeedbackStatusEnumV111, ArmMsgModeCtrlV111
 from .parser import Parser, NeroV111DriverAPIProtoAdapter
 
@@ -74,9 +83,116 @@ class Driver(DefaultDriver):
         self._msg_mode.mit_mode = NeroV111DriverAPIProtoAdapter.mit_mode(motion_mode)
         self._set_mode()
 
+    def _maybe_set_motion_mode(
+        self, motion_mode: Literal['p', 'j', 'l', 'c', 'mit', 'js']
+    ) -> None:
+        """Set motion mode only when auto mode-setting is enabled."""
+        if self._auto_set_motion_mode_enabled:
+            self.set_motion_mode(motion_mode)
+
+    def _deal_move_p_msgs(self, pose: List[float]):
+        """Get pose control messages."""
+        pose = Validator.clamp_pose6(
+            pose,
+            name="flange_pose"
+        )
+
+        rpy = [i * RAD2DEG for i in pose[3:]]
+
+        x = round(pose[0] * 1e6)
+        y = round(pose[1] * 1e6)
+        z = round(pose[2] * 1e6)
+
+        roll = round(rpy[0] * 1e3)
+        pitch = round(rpy[1] * 1e3)
+        yaw = round(rpy[2] * 1e3)
+
+        return self._parser._make_end_pose_ctrl_msgs(
+            x_um=x,
+            y_um=y,
+            z_um=z,
+            roll_mdeg=roll,
+            pitch_mdeg=pitch,
+            yaw_mdeg=yaw,
+        )
+
+    def get_flange_pose(self):
+        """Get current flange pose feedback."""
+        end_pose = None
+        if getattr(self, "_end_pose", None) is None:
+            self._end_pose = MessageAbstract(
+                msg=list([0.0] * 6), msg_type=ArmMsgFeedbackEndPose.type_
+            )
+        if getattr(self._parser, "end_pose_xy", None) is not None:
+            end_pose = self._parser.end_pose_xy
+            self._end_pose.msg[0] = end_pose.msg.X_axis
+            self._end_pose.msg[1] = end_pose.msg.Y_axis
+        if getattr(self._parser, "end_pose_zrx", None) is not None:
+            end_pose = self._parser.end_pose_zrx
+            self._end_pose.msg[2] = end_pose.msg.Z_axis
+            self._end_pose.msg[3] = end_pose.msg.RX_axis
+        if getattr(self._parser, "end_pose_ryrz", None) is not None:
+            end_pose = self._parser.end_pose_ryrz
+            self._end_pose.msg[4] = end_pose.msg.RY_axis
+            self._end_pose.msg[5] = end_pose.msg.RZ_axis
+        if end_pose is not None:
+            self._end_pose.timestamp = end_pose.timestamp
+            self._end_pose.hz = self._ctx.fps.get_fps(end_pose.msg_type)
+            if Validator.is_pose6(
+                self._end_pose.msg,
+                name="flange_pose"
+            ):
+                return self._end_pose
+        return None
+
+    def get_motor_states(self, joint_index: Literal[1, 2, 3, 4, 5, 6, 7]):
+        """Get high-speed motor state feedback.
+
+        Parameters
+        ----------
+        `joint_index`: Literal[1, 2, 3, 4, 5, 6, 7]
+        - 1~7: get the motor state of the specified joint
+
+        Returns
+        -------
+        MessageAbstract[ArmMsgFeedbackHighSpd] | None
+            The specified joint's motor state, or None if not available.
+
+        Message
+        -------
+        `position`: Current motor position, unit: rad
+
+        `velocity`: Current motor speed, unit: rad/s
+
+        `current`: Current motor current, unit: A
+
+        `torque`: Current motor torque, unit: N·m
+
+        Examples
+        --------
+        >>> ms = robot.get_motor_states(1)
+        >>> if ms is not None:
+        >>>     print(ms.msg.position, ms.msg.velocity, ms.msg.torque)
+        >>>     print(ms.hz, ms.timestamp)
+        """
+        if joint_index not in self._JOINT_INDEX_LIST[:-1]:
+            raise ValueError(
+                f"Joint index should be {self._JOINT_INDEX_LIST[:-1]}")
+
+        motor_state: Optional[
+            MessageAbstract[ArmMsgFeedbackHighSpd]
+        ] = getattr(self._parser, f"motor_state_{joint_index}", None)
+        if motor_state is not None:
+            motor_state.hz = self._ctx.fps.get_fps(motor_state.msg_type)
+            # TODO: remove this after the bug is fixed
+            motor_state.msg.velocity = 0.0
+            return motor_state
+        else:
+            return None
+
     def move_mit(
         self,
-        joint_index: Literal[1, 2, 3, 4, 5, 6],
+        joint_index: Literal[1, 2, 3, 4, 5, 6, 7],
         p_des: float = 0.0,
         v_des: float = 0.0,
         kp: float = 10.0,
@@ -98,7 +214,7 @@ class Driver(DefaultDriver):
 
         Parameters
         ----------
-        `joint_index`: Literal[1, 2, 3, 4, 5, 6]
+        `joint_index`: Literal[1, 2, 3, 4, 5, 6, 7]
 
         `p_des`: float, optional
         - Desired position reference (unit: rad). Range: [-12.5, 12.5].
@@ -127,7 +243,7 @@ class Driver(DefaultDriver):
         ------
         ValueError
             If any parameter is outside the allowed range, or if `joint_index`
-            is not in {1, 2, 3, 4, 5, 6}.
+            is not in {1, 2, 3, 4, 5, 6, 7}.
 
         Notes
         -----
@@ -167,6 +283,10 @@ class Driver(DefaultDriver):
                 f"joint {joint_index} limits [{lower_limit}, {upper_limit}] rad. "
             )
             p_des = Validator.clamp(p_des, lower_limit, upper_limit)
+
+        # TODO: remove this after the bug is fixed
+        if joint_index != 6:
+            v_des *= -1
 
         if not Validator.is_within_limit(v_des, -45.0, 45.0):
             print(
@@ -213,3 +333,25 @@ class Driver(DefaultDriver):
 
         self._maybe_set_motion_mode('mit')
         self._send_msg(msg)
+
+    def calibrate_joint(
+        self,
+        joint_index: Literal[1, 2, 3, 4, 5, 6, 7, 255] = 255,
+    ):
+        """Calibrate a joint by setting current position as zero.
+
+        Parameters
+        ----------
+        `joint_index`: Literal[1, 2, 3, 4, 5, 6, 7, 255]
+        - 1~7: calibrate the specified joint without offset.
+        - 255: calibrate all joints with offset (controller-side behavior).
+        """
+        if joint_index not in self._JOINT_INDEX_LIST:
+            raise ValueError(f"Joint index should be {self._JOINT_INDEX_LIST}")
+
+        self._send_msg(
+            self._MSG_JointConfig(
+                joint_index=joint_index,
+                set_motor_current_pos_as_zero=0xAE,
+            )
+        )
