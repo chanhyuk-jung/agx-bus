@@ -19,11 +19,13 @@ def wait_motion_done(robot, timeout: float = 5.0, poll_interval: float = 0.1) ->
 
 
 def create_demo_config():
+    robot = ArmModel.NERO
+    firmware_version = NeroFW.DEFAULT
     platform_system = system()
     if platform_system == "Windows":
         return create_agx_arm_config(
-            robot=ArmModel.NERO,
-            firmeware_version=NeroFW.DEFAULT,
+            robot=robot,
+            firmeware_version=firmware_version,
             interface="agx_cando",
             channel="0",
             # receive_own_messages=True,
@@ -31,8 +33,8 @@ def create_demo_config():
         )
     if platform_system == "Linux":
         return create_agx_arm_config(
-            robot=ArmModel.NERO,
-            firmeware_version=NeroFW.DEFAULT,
+            robot=robot,
+            firmeware_version=firmware_version,
             interface="socketcan",
             channel="can0",
             # receive_own_messages=True,
@@ -40,8 +42,8 @@ def create_demo_config():
         )
     if platform_system == "Darwin":
         return create_agx_arm_config(
-            robot=ArmModel.NERO,
-            firmeware_version=NeroFW.DEFAULT,
+            robot=robot,
+            firmeware_version=firmware_version,
             interface="slcan",
             channel="/dev/ttyACM0",
         )
@@ -84,15 +86,15 @@ print(end_effector.__doc__)
 
 # -------------------------- Move ----------------------------
 
-# robot.move_p([-0.45, -0.0, 0.45, -1.5708, 0.0, -3.14159])
+# robot.move_p([-0.4, -0.0, 0.4, -1.5708, 0.0, -3.14159])
 # wait_motion_done(robot, timeout=5.0)
 
-# robot.move_l([-0.45, -0.2, 0.45, -1.5708, 0.0, -3.14159])
+# robot.move_l([-0.4, -0.2, 0.4, -1.5708, 0.0, -3.14159])
 # wait_motion_done(robot, timeout=5.0)
 
-# start_pose = [-0.45, -0.2, 0.45, -1.5708, 0.0, -3.14159]
-# mid_pose = [-0.45, 0.0, 0.5, -1.5708, 0.0, -3.14159]
-# end_pose = [-0.45, 0.2, 0.45, -1.5708, 0.0, -3.14159]
+# start_pose = [-0.4, -0.2, 0.4, -1.5708, 0.0, -3.14159]
+# mid_pose = [-0.4, 0.0, 0.45, -1.5708, 0.0, -3.14159]
+# end_pose = [-0.4, 0.2, 0.4, -1.5708, 0.0, -3.14159]
 # robot.move_c(start_pose, mid_pose, end_pose)
 # wait_motion_done(robot, timeout=5.0)
 
@@ -310,7 +312,7 @@ while True:
 #     tcp_pose = robot.get_flange2tcp_pose(flange_pose.msg)
 #     print(tcp_pose)
 
-# pose = robot.get_tcp2flange_pose([-0.45, -0.0, 0.45, -1.5708, 0.0, -3.14159])
+# pose = robot.get_tcp2flange_pose([-0.4, -0.0, 0.4, -1.5708, 0.0, -3.14159])
 # print(pose)
 # robot.move_p(pose)
 # wait_motion_done(robot, timeout=5.0)

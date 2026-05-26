@@ -19,11 +19,13 @@ def wait_motion_done(robot, timeout: float = 5.0, poll_interval: float = 0.1) ->
 
 
 def create_demo_config():
+    robot = ArmModel.PIPER_X
+    firmware_version = PiperFW.DEFAULT
     platform_system = system()
     if platform_system == "Windows":
         return create_agx_arm_config(
-            robot=ArmModel.PIPER_X,
-            firmeware_version=PiperFW.DEFAULT,
+            robot=robot,
+            firmeware_version=firmware_version,
             interface="agx_cando",
             channel="0",
             # receive_own_messages=True,
@@ -31,8 +33,8 @@ def create_demo_config():
         )
     if platform_system == "Linux":
         return create_agx_arm_config(
-            robot=ArmModel.PIPER_X,
-            firmeware_version=PiperFW.DEFAULT,
+            robot=robot,
+            firmeware_version=firmware_version,
             interface="socketcan",
             channel="can0",
             # receive_own_messages=True,
@@ -40,8 +42,8 @@ def create_demo_config():
         )
     if platform_system == "Darwin":
         return create_agx_arm_config(
-            robot=ArmModel.PIPER_X,
-            firmeware_version=PiperFW.DEFAULT,
+            robot=robot,
+            firmeware_version=firmware_version,
             interface="slcan",
             channel="/dev/ttyACM0",
         )
@@ -339,8 +341,8 @@ while True:
 
 # -------------------------- CPV --------------------------
 
-# robot.move_cpv_pos(1, 0.5)
-# robot.move_cpv_vel(1, 0.05)
+# robot.move_cpv_pos(1, 0.0)
+# robot.move_cpv_vel(1, 0.0)
 
 # ac = robot.get_cpv_acc(1)
 # print("ac:", ac)

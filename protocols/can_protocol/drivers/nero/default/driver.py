@@ -833,7 +833,7 @@ class Driver(ArmDriverAbstract):
 
         Examples
         --------
-        >>> robot.move_p([-0.4, -0.0, 0.4, 1.5708, 0.0, 0.0])
+        >>> robot.move_p([-0.4, -0.0, 0.4, -1.5708, 0.0, -3.14159])
         """
         # Prepare control messages
         msgs = self._deal_move_p_msgs(pose)
@@ -937,7 +937,7 @@ class Driver(ArmDriverAbstract):
 
         Examples
         --------
-        >>> robot.move_l([-0.4, -0.2, 0.4, 1.5708, 0.0, 0.0])
+        >>> robot.move_l([-0.4, -0.2, 0.4, -1.5708, 0.0, -3.14159])
         """
         # Prepare control messages
         msgs = self._deal_move_p_msgs(pose)
@@ -977,9 +977,9 @@ class Driver(ArmDriverAbstract):
 
         Examples
         --------
-        >>> sp = [-0.4, -0.2, 0.4, 1.5708, 0.0, 0.0]
-        >>> mp = [-0.4, -0.0, 0.45, 1.5708, 0.0, 0.0]
-        >>> ep = [-0.4, 0.2, 0.4, 1.5708, 0.0, 0.0]
+        >>> sp = [-0.4, -0.2, 0.4, -1.5708, 0.0, -3.14159]
+        >>> mp = [-0.4, -0.0, 0.45, -1.5708, 0.0, -3.14159]
+        >>> ep = [-0.4, 0.2, 0.4, -1.5708, 0.0, -3.14159]
         >>> robot.move_c(sp, mp, ep)
         """
         # Prepare control messages
@@ -1042,8 +1042,8 @@ class Driver(ArmDriverAbstract):
           Joint 1-2: Range [-24.0, 24.0].
             (Numerical precision: 1.8823529411764706e-1 N·m)
 
-          Joint 3-4: Range [-18.0, 18.0].
-            (Numerical precision: 1.411764705882353e-1 N·m)
+          Joint 3-4: Range [-16.0, 16.0].
+            (Numerical precision: 1.2549019607843137e-1 N·m)
             
           Joint 5-7: Range [-8.0, 8.0].
             (Numerical precision: 6.274509803921569e-2 N·m)
