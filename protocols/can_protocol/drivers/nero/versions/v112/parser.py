@@ -25,6 +25,12 @@ from .....msgs.nero.default import (
     ArmMsgCPVSettingsAndQueries7,
     ArmMsgFeedbackCPVResponse7,
 )
+from .....msgs.nero.versions.v112 import (
+    ArmMsgFeedbackIKJointStates12,
+    ArmMsgFeedbackIKJointStates34,
+    ArmMsgFeedbackIKJointStates56,
+    ArmMsgFeedbackIKJointStates7,
+)
 from ....piper.default.parser import Parser as PiperParser
 from ..v111.parser import (
     Codec as V111Codec,
@@ -86,6 +92,11 @@ class Parser(V111Parser):
         leader_joint_7: Optional[MessageAbstract[ArmMsgJointCtrl7]]
 
         cpv_response_7: Optional[MessageAbstract[ArmMsgFeedbackCPVResponse7]]
+
+        ik_joint_12: Optional[MessageAbstract[ArmMsgFeedbackIKJointStates12]]
+        ik_joint_34: Optional[MessageAbstract[ArmMsgFeedbackIKJointStates34]]
+        ik_joint_56: Optional[MessageAbstract[ArmMsgFeedbackIKJointStates56]]
+        ik_joint_7: Optional[MessageAbstract[ArmMsgFeedbackIKJointStates7]]
 
     def __init__(self, fps_manager, codec: Optional[Codec] = None):
         super().__init__(fps_manager, codec=codec or Codec())
@@ -153,6 +164,26 @@ class Parser(V111Parser):
                     "leader_joint_7",
                     ArmMsgJointCtrl7,
                     self._codec.decode_170_joint_ctrl_7,
+                ),
+                0x2AA: (
+                    "ik_joint_12",
+                    ArmMsgFeedbackIKJointStates12,
+                    self._codec.decode_2A5_joint_12,
+                ),
+                0x2AB: (
+                    "ik_joint_34",
+                    ArmMsgFeedbackIKJointStates34,
+                    self._codec.decode_2A6_joint_34,
+                ),
+                0x2AC: (
+                    "ik_joint_56",
+                    ArmMsgFeedbackIKJointStates56,
+                    self._codec.decode_2A7_joint_56,
+                ),
+                0x2AD: (
+                    "ik_joint_7",
+                    ArmMsgFeedbackIKJointStates7,
+                    self._codec.decode_2A9_joint_7,
                 ),
             }
         )

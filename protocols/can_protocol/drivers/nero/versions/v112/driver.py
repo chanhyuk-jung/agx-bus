@@ -9,6 +9,7 @@ from .....msgs.nero.default import (
     ArmMsgFeedbackLeaderJointStates,
     ArmMsgFeedbackStatus,
 )
+from .....msgs.nero.versions.v112 import ArmMsgFeedbackIKJointStates
 from ...versions.v111.driver import Driver as V111Driver
 
 from .parser import (
@@ -159,6 +160,64 @@ class Driver(V111Driver):
                 length=self._JOINT_NUMS
             ):
                 return self._leader_joint_angles
+        return None
+
+    def get_ik_joint_angles(self):
+        """Get the IK joint angles feedback.
+
+        Notes
+        -----
+        Only available after calling `move_p/l/c`.
+
+        Returns
+        -------
+        MessageAbstract[list[float]] | None
+            The IK joint angles feedback.
+            If the IK joint angles are not available, return None.
+        
+        Message
+        -------
+        `list[float]`: IK joint angles, unit: rad
+
+        Examples
+        --------
+        >>> ika = robot.get_ik_joint_angles()
+        >>> if ika is not None:
+        >>>     print(ika.msg)
+        >>>     print(ika.hz, ika.timestamp)
+        """
+        ik_joint_angles: Optional[
+            MessageAbstract[ArmMsgFeedbackIKJointStates]
+        ] = None
+        if getattr(self, "_ik_joint_angles", None) is None:
+            self._ik_joint_angles = MessageAbstract(
+                msg=list([0.0] * self._JOINT_NUMS),
+                msg_type=ArmMsgFeedbackIKJointStates.type_,
+            )
+        if getattr(self._parser, "ik_joint_12", None) is not None:
+            ik_joint_angles = self._parser.ik_joint_12
+            self._ik_joint_angles.msg[0] = ik_joint_angles.msg.joint_1
+            self._ik_joint_angles.msg[1] = ik_joint_angles.msg.joint_2
+        if getattr(self._parser, "ik_joint_34", None) is not None:
+            ik_joint_angles = self._parser.ik_joint_34
+            self._ik_joint_angles.msg[2] = ik_joint_angles.msg.joint_3
+            self._ik_joint_angles.msg[3] = ik_joint_angles.msg.joint_4
+        if getattr(self._parser, "ik_joint_56", None) is not None:
+            ik_joint_angles = self._parser.ik_joint_56
+            self._ik_joint_angles.msg[4] = ik_joint_angles.msg.joint_5
+            self._ik_joint_angles.msg[5] = ik_joint_angles.msg.joint_6
+        if getattr(self._parser, "ik_joint_7", None) is not None:
+            ik_joint_angles = self._parser.ik_joint_7
+            self._ik_joint_angles.msg[6] = ik_joint_angles.msg.joint_7
+        if ik_joint_angles is not None:
+            self._ik_joint_angles.timestamp = ik_joint_angles.timestamp
+            self._ik_joint_angles.hz = self._ctx.fps.get_fps(
+                ik_joint_angles.msg_type)
+            if Validator.is_joints(
+                self._ik_joint_angles.msg,
+                length=self._JOINT_NUMS
+            ):
+                return self._ik_joint_angles
         return None
 
     # -------------------------- CPV --------------------------

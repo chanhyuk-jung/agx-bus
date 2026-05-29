@@ -1,9 +1,15 @@
-from typing import Callable, Dict, Optional, Tuple, Type
+from typing import Callable, Dict, Optional, Tuple, Type, TYPE_CHECKING
 
 from .......utiles.numeric_codec import NumericCodec as nc
+from .....msgs.core.msg_abstract import MessageAbstract
 from .....msgs.piper.versions import (
     ArmMsgFeedbackStatusV188,
     ArmMsgModeCtrlV188,
+)
+from .....msgs.piper.versions.v188 import (
+    ArmMsgFeedbackIKJointStates12,
+    ArmMsgFeedbackIKJointStates34,
+    ArmMsgFeedbackIKJointStates56,
 )
 from ...default.parser import (
     Codec as DefaultCodec,
@@ -67,6 +73,11 @@ class Codec(DefaultCodec):
 class Parser(DefaultParser):
     """v188 parser using CodecV188."""
 
+    if TYPE_CHECKING:
+        ik_joint_12: Optional[MessageAbstract[ArmMsgFeedbackIKJointStates12]]
+        ik_joint_34: Optional[MessageAbstract[ArmMsgFeedbackIKJointStates34]]
+        ik_joint_56: Optional[MessageAbstract[ArmMsgFeedbackIKJointStates56]]
+
     def __init__(self, fps_manager, codec: Optional[Codec] = None):
         super().__init__(fps_manager, codec=codec or Codec())
 
@@ -78,6 +89,21 @@ class Parser(DefaultParser):
             "arm_status",
             ArmMsgFeedbackStatusV188,
             self._codec.decode_2A1_status,
+        )
+        rx_map[0x2AA] = (
+            "ik_joint_12",
+            ArmMsgFeedbackIKJointStates12,
+            self._codec.decode_2A5_joint_12,
+        )
+        rx_map[0x2AB] = (
+            "ik_joint_34",
+            ArmMsgFeedbackIKJointStates34,
+            self._codec.decode_2A6_joint_34,
+        )
+        rx_map[0x2AC] = (
+            "ik_joint_56",
+            ArmMsgFeedbackIKJointStates56,
+            self._codec.decode_2A7_joint_56,
         )
         return rx_map
 
