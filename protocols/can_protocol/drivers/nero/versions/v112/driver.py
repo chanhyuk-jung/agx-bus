@@ -1,3 +1,4 @@
+import warnings
 from typing import Optional
 from typing_extensions import Literal
 
@@ -101,11 +102,67 @@ class Driver(V111Driver):
     def set_normal_mode(self):
         """Set the robotic arm to the normal controlled mode (single arm).
 
-        On firmware v112+, the controller does not implement this path; this
-        override is a deliberate no-op so callers using older scripts keep
-        running without errors.
+        Firmware ≤ 1.11 (``NeroFW.DEFAULT`` / ``NeroFW.V111``)
+            Switches to normal mode and opens CAN feedback push when enabled.
+
+        Firmware ≥ 1.12 (``NeroFW.V112``)
+            No effect (compatibility no-op). Only **leader** and **follower**
+            modes remain (aligned with Piper). Default is follower; CAN
+            feedback push is on at power-up — no manual CAN-push setup.
+            Use :meth:`set_follower_mode` or :meth:`set_leader_mode`.
+
+        See Also
+        --------
+        set_follower_mode, set_leader_mode
         """
+        if not getattr(self, "_set_normal_mode_v112_warned", False):
+            warnings.warn(
+                "set_normal_mode() has no effect on Nero firmware >= 1.12 "
+                "(NeroFW.V112): only leader/follower modes (Piper-aligned); "
+                "default is follower with CAN push on power-up. Use "
+                "set_follower_mode() or set_leader_mode().",
+                UserWarning,
+                stacklevel=2,
+            )
+            self._set_normal_mode_v112_warned = True
         return None
+
+    def enable(self, joint_index: Literal[1, 2, 3, 4, 5, 6, 7, 255] = 255):
+        """Enable one joint motor or all joint motors.
+
+        Parameters
+        ----------
+        `joint_index`: Literal[1, 2, 3, 4, 5, 6, 7, 255], optional
+        - 1~7: enable the specified joint
+        - 255: enable all joints (default)
+
+        Returns
+        -------
+        bool
+            True if the joint is enabled, False otherwise.
+
+        Examples
+        --------
+        >>> while not robot.enable():
+        >>>     time.sleep(0.01)
+        >>> print("All joints enabled")
+        """
+        if joint_index not in self._JOINT_INDEX_LIST:
+            raise ValueError(f"Joint index should be {self._JOINT_INDEX_LIST}")
+
+        def send_enable_msg(joint_index):
+            msg = self._MSG_MotorEnableDisableConfig(
+                joint_index=joint_index, enable_flag=2)
+            self._send_msg(msg)
+
+        if joint_index == 255:
+            send_enable_msg(self._JOINT_NUMS + 1)
+            enable = all(self.get_joints_enable_status_list())
+        else:
+            send_enable_msg(joint_index)
+            enable = self.get_joint_enable_status(joint_index=joint_index)
+
+        return enable
 
     def get_leader_joint_angles(self):
         """Get the leader arm joint angles,
