@@ -127,7 +127,7 @@ class Driver(V111Driver):
             self._set_normal_mode_v112_warned = True
         return None
 
-    def enable(self, joint_index: Literal[1, 2, 3, 4, 5, 6, 7, 255] = 255):
+    def enable(self, joint_index: Literal[1, 2, 3, 4, 5, 6, 7, 255] = 255, timeout: float = 1.5):
         """Enable one joint motor or all joint motors.
 
         Parameters
@@ -135,6 +135,10 @@ class Driver(V111Driver):
         `joint_index`: Literal[1, 2, 3, 4, 5, 6, 7, 255], optional
         - 1~7: enable the specified joint
         - 255: enable all joints (default)
+
+        `timeout`: float, optional
+        - 0.0: non-blocking; evaluate readiness once and return immediately.
+        - > 0.0: blocking; poll until ready or timeout expires.
 
         Returns
         -------
@@ -150,6 +154,22 @@ class Driver(V111Driver):
         if joint_index not in self._JOINT_INDEX_LIST:
             raise ValueError(f"Joint index should be {self._JOINT_INDEX_LIST}")
 
+        def function():
+            result = (self.get_arm_status() is None or
+            self.get_arm_status().msg.ctrl_mode != self.ARM_STATUS.CtrlMode.CAN_CTRL)
+
+            if result:
+                if self._msg_mode.enable_can_push == self._msg_mode.Enums.CanActiveMsgReporting.INVALID:
+                    self._msg_mode.enable_can_push = self._msg_mode.Enums.CanActiveMsgReporting.ENABLE
+                else:
+                    self._msg_mode.enable_can_push = self._msg_mode.Enums.CanActiveMsgReporting.INVALID
+                self._set_mode()
+                self._ctx._read_stop_event.wait(timeout=0.02)
+
+            return not result
+
+        self._ctx._wait_for_response(function, timeout=0.2)
+
         def send_enable_msg(joint_index):
             msg = self._MSG_MotorEnableDisableConfig(
                 joint_index=joint_index, enable_flag=2)
@@ -157,12 +177,77 @@ class Driver(V111Driver):
 
         if joint_index == 255:
             send_enable_msg(self._JOINT_NUMS + 1)
-            enable = all(self.get_joints_enable_status_list())
+            return self._ctx._wait_for_response(
+                lambda: all(self.get_joints_enable_status_list()),
+                timeout=timeout,
+            )
         else:
             send_enable_msg(joint_index)
-            enable = self.get_joint_enable_status(joint_index=joint_index)
+            return self._ctx._wait_for_response(
+                lambda: self.get_joint_enable_status(joint_index),
+                timeout=timeout,
+            )
 
-        return enable
+    def disable(self, joint_index: Literal[1, 2, 3, 4, 5, 6, 7, 255] = 255, timeout: float = 1.5):
+        """Disable one joint motor or all joint motors.
+
+        Parameters
+        ----------
+        `joint_index`: Literal[1, 2, 3, 4, 5, 6, 7, 255], optional
+        - 1~7: disable the specified joint
+        - 255: disable all joints (default)
+
+        `timeout`: float, optional
+        - 0.0: non-blocking; evaluate readiness once and return immediately.
+        - > 0.0: blocking; poll until ready or timeout expires.
+
+        Returns
+        -------
+        bool
+            True if the joint is disabled, False otherwise.
+
+        Examples
+        --------
+        >>> if robot.disable():
+        >>>     print("All joints disabled")
+        """
+        if joint_index not in self._JOINT_INDEX_LIST:
+            raise ValueError(f"Joint index should be {self._JOINT_INDEX_LIST}")
+
+        def function():
+            result = (self.get_arm_status() is None or
+            self.get_arm_status().msg.ctrl_mode != self.ARM_STATUS.CtrlMode.CAN_CTRL)
+
+            if result:
+                if self._msg_mode.enable_can_push == self._msg_mode.Enums.CanActiveMsgReporting.INVALID:
+                    self._msg_mode.enable_can_push = self._msg_mode.Enums.CanActiveMsgReporting.ENABLE
+                else:
+                    self._msg_mode.enable_can_push = self._msg_mode.Enums.CanActiveMsgReporting.INVALID
+                self._set_mode()
+                self._ctx._read_stop_event.wait(timeout=0.02)
+
+            return not result
+
+        self._ctx._wait_for_response(function, timeout=0.2)
+
+        def send_disable_msg(joint_index):
+            msg = self._MSG_MotorEnableDisableConfig(
+                joint_index=joint_index, enable_flag=1)
+            self._send_msg(msg)
+
+        if joint_index == 255:
+            send_disable_msg(self._JOINT_NUMS + 1)
+            return self._ctx._wait_for_response(
+                lambda: all(not self.get_joint_enable_status(i) 
+                for i in self._JOINT_INDEX_LIST[:-1]),
+                timeout=timeout,
+            )
+        else:
+            send_disable_msg(joint_index)
+            return self._ctx._wait_for_response(
+                lambda: not self.get_joint_enable_status(joint_index),
+                timeout=timeout,
+            )
 
     def get_leader_joint_angles(self):
         """Get the leader arm joint angles,

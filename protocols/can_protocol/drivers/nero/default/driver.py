@@ -1197,30 +1197,30 @@ class Driver(ArmDriverAbstract):
     def set_normal_mode(self):
         """Set the robotic arm to the normal controlled mode (single arm)."""
         self._set_leader_follower_config(linkage_config=0x00)
-        self._msg_mode.enable_can_push = 0x01
+        self._msg_mode.enable_can_push = self._msg_mode.Enums.CanActiveMsgReporting.ENABLE
         temp = self._msg_mode.move_mode
         self._msg_mode.move_mode = 255
         self._set_mode()
-        self._msg_mode.enable_can_push = 0x00
+        self._msg_mode.enable_can_push = self._msg_mode.Enums.CanActiveMsgReporting.INVALID
         self._msg_mode.move_mode = temp
 
     def set_leader_mode(self):
         """Set the arm to the leader arm zero force drag mode (leader arm)."""
-        self._msg_mode.enable_can_push = 0x02
+        self._msg_mode.enable_can_push = self._msg_mode.Enums.CanActiveMsgReporting.DISABLE
         temp = self._msg_mode.move_mode
         self._msg_mode.move_mode = 255
         self._set_mode()
-        self._msg_mode.enable_can_push = 0x00
+        self._msg_mode.enable_can_push = self._msg_mode.Enums.CanActiveMsgReporting.INVALID
         self._msg_mode.move_mode = temp
         self._set_leader_follower_config(linkage_config=0xFA)
 
     def set_follower_mode(self):
         """Set the arm to the follower arm controlled mode (follower arm)."""
-        self._msg_mode.enable_can_push = 0x02
+        self._msg_mode.enable_can_push = self._msg_mode.Enums.CanActiveMsgReporting.DISABLE
         temp = self._msg_mode.move_mode
         self._msg_mode.move_mode = 255
         self._set_mode()
-        self._msg_mode.enable_can_push = 0x00
+        self._msg_mode.enable_can_push = self._msg_mode.Enums.CanActiveMsgReporting.INVALID
         self._msg_mode.move_mode = temp
         self._set_leader_follower_config(linkage_config=0xFC)
 
