@@ -1,3 +1,5 @@
+from typing_extensions import Literal
+
 from ....piper.versions.v183.driver import Driver as PiperDriverV183
 
 
@@ -28,4 +30,48 @@ class Driver(PiperDriverV183):
     - Some `set_*` APIs additionally verify by reading back state; their
       docstrings will mention the verification method if applicable.
     """
-    pass
+
+    def move_cpv_pos(
+        self,
+        joint_index: Literal[1, 2, 3, 4, 5, 6],
+        pos: float,
+    ) -> None:
+        """Command joint position in CPV motion mode.
+
+        Parameters
+        ----------
+        `joint_index`: Literal[1, 2, 3, 4, 5, 6]
+
+        `pos`: float
+        - Target joint angle in radians.
+        """
+        # TODO: remove this after the bug is fixed
+        if joint_index in [4, 5]:
+            pos = -pos
+        super().move_cpv_pos(
+            joint_index,
+            pos,
+        )
+
+    def move_cpv_vel(
+        self,
+        joint_index: Literal[1, 2, 3, 4, 5, 6],
+        vel: float,
+    ) -> None:
+        """Command joint velocity reference in CPV motion mode.
+
+        Parameters
+        ----------
+        `joint_index`: Literal[1, 2, 3, 4, 5, 6]
+
+        `vel`: float
+        - Desired joint velocity in rad/s.
+        """
+        # TODO: remove this after the bug is fixed
+        if joint_index in (2, 3):
+            vel *= -1
+        self._move_cpv(
+            joint_index=joint_index,
+            type_='sp',
+            value=vel,
+        )

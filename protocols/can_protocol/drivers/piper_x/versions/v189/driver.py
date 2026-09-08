@@ -43,3 +43,26 @@ class Driver(PiperDriverV189):
             joint_index,
             pos,
         )
+
+    def move_cpv_vel(
+        self,
+        joint_index: Literal[1, 2, 3, 4, 5, 6],
+        vel: float,
+    ) -> None:
+        """Command joint velocity reference in CPV motion mode.
+
+        Parameters
+        ----------
+        `joint_index`: Literal[1, 2, 3, 4, 5, 6]
+
+        `vel`: float
+        - Desired joint velocity in rad/s.
+        """
+        # TODO: remove this after the bug is fixed
+        if joint_index in (2, 3):
+            vel *= -1
+        self._move_cpv(
+            joint_index=joint_index,
+            type_='sp',
+            value=vel,
+        )

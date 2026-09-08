@@ -2746,6 +2746,9 @@ class Driver(ArmDriverAbstract):
         `vel`: float
         - Desired joint velocity in rad/s.
         """
+        # TODO: remove this after the bug is fixed
+        if joint_index in (2, 3, 4, 5):
+            vel *= -1
         self._move_cpv(
             joint_index=joint_index,
             type_='sp',
