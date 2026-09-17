@@ -80,6 +80,70 @@ class Driver(V112Driver):
         else:
             return None
 
+    def set_joint_acc_limits(
+        self,
+        joint_index: Literal[1, 2, 3, 4, 5, 6, 7, 255] = 255,
+        max_joint_acc: Optional[float] = None,
+        timeout: float = 1.0,
+    ):
+        """Set the joint acceleration limits.
+
+        Parameters
+        ----------
+        `joint_index`: Literal[1, 2, 3, 4, 5, 6, 7, 255]
+        - 1~7: set the joint acceleration limits of the specified joint.
+        - 255: set the joint acceleration limits of all joints.
+
+        `max_joint_acc`: float
+        - The maximum joint acceleration in rad/s^2.
+            (Numerical precision: 1e-3 rad/s^2)
+
+        `timeout`: float, optional
+        - Timeout in seconds. Default is 1.0.
+
+        Returns
+        -------
+        bool
+            True if the maximum joint acceleration is set successfully, False
+            otherwise.
+        """
+        self._ctx._validate_timeout(timeout)
+        if joint_index not in self._JOINT_INDEX_LIST:
+            raise ValueError(f"Joint index should be {self._JOINT_INDEX_LIST}")
+
+        if joint_index == 255:
+            return self._all_joints_bool(
+                lambda i: self.set_joint_acc_limits(i, max_joint_acc)
+            )
+
+        max_joint_acc = (
+            0x7FFF if max_joint_acc is None else round(abs(max_joint_acc) * 1e2)
+        )
+
+        def request() -> None:
+            self._send_msg(
+                self._MSG_JointConfig(
+                    joint_index=joint_index,
+                    acc_param_config_is_effective_or_not=0xAE,
+                    max_joint_acc=max_joint_acc,
+                )
+            )
+
+        def check() -> bool:
+            res = self.get_joint_acc_limits(joint_index)
+            return not (
+                res is None
+                or max_joint_acc != 0x7FFF
+                and max_joint_acc != round(abs(res.msg.max_joint_acc) * 1e2)
+            )
+
+        return self._check_set_by_readback(
+            request=request,
+            check=check,
+            timeout=timeout,
+            stamp_key=f"set_joint_acc_limits:{joint_index}",
+        )
+
     # -------------------------- CPV --------------------------
 
     def _cpv_write_ack_received(

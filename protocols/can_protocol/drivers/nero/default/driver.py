@@ -1757,6 +1757,8 @@ class Driver(ArmDriverAbstract):
                 lambda i: self.set_joint_acc_limits(i, max_joint_acc)
             )
 
+        # TODO: changed the acceleration unit to 1e2
+        # corrected in version 1.20
         max_joint_acc = (
             0x7FFF if max_joint_acc is None else round(abs(max_joint_acc) * 1e4)
         )
