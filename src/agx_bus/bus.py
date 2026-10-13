@@ -1,38 +1,19 @@
 import time
 from dataclasses import dataclass
 from enum import IntEnum, unique
-from typing import Literal
+from typing import Literal, cast
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-from .pyAgxArm import (
-    AgxArmFactory,
-    ArmModel,
-    create_agx_arm_config,
+from .pyAgxArm import AgxArmFactory, create_agx_arm_config
+from .pyAgxArm.protocols.can_protocol.drivers import (
+    NeroDriverDefault,
+    NeroDriverV111,
+    PiperDriverDefault,
 )
 
 
-@dataclass(frozen=True)
-class Joints:
-    timestamp: NDArray[np.float64]
-
-    position: NDArray[np.float64]
-    velocity: NDArray[np.float64]
-
-    torque: NDArray[np.float64]
-    current: NDArray[np.float64]
-
-
-@dataclass(frozen=True)
-class Gripper:
-    timestamp: float
-
-    width: float
-    force: float
-
-
-@unique
 class ControlType(IntEnum):
     STANDBY = 0x00
     CAN = 0x01
@@ -42,6 +23,7 @@ class ControlType(IntEnum):
     REMOTE = 0x05
     LINKAGE_TEACHING_INPUT = 0x06
     OFFLINE_TRAJECTORY = 0x07
+    TCP = 0x08  # Only supported on Nero
     UNKNOWN = 0xFF
 
 
@@ -65,14 +47,23 @@ class ArmStatus(IntEnum):
     UNKNOWN = 0xFF
 
 
-@unique
 class MoveType(IntEnum):
     POSITION = 0x00
     JOINT = 0x01
     LINE = 0x02
     CURVE = 0x03
-    MIT = 0x04  # Piper firmware < v188; v188+ uses 0x06
+    MIT = 0x04  # Piper firmware < v188, Nero firmware < 1.11
     CPV = 0x05
+    UNKNOWN = 0xFF
+
+
+class NewMoveType(IntEnum):
+    POSITION = 0x00
+    JOINT = 0x01
+    LINE = 0x02
+    CURVE = 0x03
+    CPV = 0x05
+    MIT = 0x06
     UNKNOWN = 0xFF
 
 
@@ -86,6 +77,7 @@ class TeachingStatus(IntEnum):
     RESUME_EXECUTION = 0x05  # Resume execution (continue trajectory replay)
     TERMINATE_EXECUTION = 0x06  # Terminate execution
     MOVE_TO_START = 0x07  # Move to trajectory start point
+    UNKNOWN = 0xFF
 
 
 @unique
@@ -95,7 +87,7 @@ class MotionStatus(IntEnum):
     UNKNOWN = 0xFF
 
 
-@dataclass
+@dataclass(frozen=True)
 class Status:
     arm: ArmStatus
     control: ControlType
@@ -104,8 +96,8 @@ class Status:
     motion: MotionStatus
     teaching: TeachingStatus
 
-    comm_errors: dict[str, bool]
-    limit_exceeds: dict[str, bool]
+    comm_errors: dict[int, bool]
+    limit_exceeds: dict[int, bool]
 
     def is_standby(self) -> bool | None:
         if self.control == ControlType.STANDBY:
@@ -130,54 +122,41 @@ class Status:
         return any(self.limit_exceeds)
 
 
-class PiperBus:
-    joint_names: tuple[str, ...] = (
-        "base",
-        "shoulder",
-        "elbow",
-        "wrist_roll",
-        "wrist_pitch",
-        "tool_roll",
-    )
+@dataclass(frozen=True)
+class Joints:
+    timestamp: NDArray[np.float64]
 
-    def __init__(
-        self, name: str, *, channel: str, version: str = "default", timeout: float = 1.0
-    ) -> None:
+    position: NDArray[np.float64]
+    velocity: NDArray[np.float64]
+
+    torque: NDArray[np.float64]
+    current: NDArray[np.float64]
+
+
+class AgilexBus:
+    def __init__(self, channel: str, *, name: str, version: str, timeout: float = 1.0):
+        if name == "nero":
+            if version not in ["default", "v111", "v112", "v120", "v121"]:
+                raise NotImplementedError
+
+            cfg = create_agx_arm_config(
+                robot=name, firmeware_version=version, channel=channel
+            )
+
+            self.arm: NeroDriverDefault | NeroDriverV111 = AgxArmFactory.create_arm(cfg)
+        else:
+            if name not in ["piper", "piper_h", "piper_l", "piper_x"]:
+                raise NotImplementedError
+
+            if version not in ["default", "v183", "v188", "v189"]:
+                raise NotImplementedError
+
+            cfg = create_agx_arm_config(
+                robot=name, firmeware_version=version, channel=channel
+            )
+            self.arm: PiperDriverDefault = AgxArmFactory.create_arm(cfg)
+
         self.timeout = timeout
-
-        self.name_to_idx: dict[str, Literal[1, 2, 3, 4, 5, 6]] = {
-            "base": 1,
-            "shoulder": 2,
-            "elbow": 3,
-            "wrist_roll": 4,
-            "wrist_pitch": 5,
-            "tool_roll": 6,
-        }
-
-        version_map: dict[str, Literal["default", "v183", "v188", "v189"]] = {
-            "default": "default",
-            "v183": "v183",
-            "v188": "v188",
-            "v189": "v189",
-        }
-
-        name_to_enum = {
-            "piper": ArmModel.PIPER,
-            "piper_h": ArmModel.PIPER_H,
-            "piper_l": ArmModel.PIPER_L,
-            "piper_x": ArmModel.PIPER_X,
-        }
-
-        robot = name_to_enum[name]
-
-        cfg = create_agx_arm_config(
-            robot=robot,
-            channel=channel,
-            firmeware_version=version_map[version],
-        )
-
-        self.arm = arm = AgxArmFactory.create_arm(cfg)
-        self.ee = arm.init_effector(arm.OPTIONS.EFFECTOR.AGX_GRIPPER)
 
     def connect(self) -> None:
         self.arm.connect()
@@ -188,26 +167,12 @@ class PiperBus:
     def disconnect(self) -> None:
         self.arm.disconnect()
 
-    def __enter__(self):
-        self.connect()
-        return self
-
-    def __exit__(self, exc_type, exc_value, exc_tb):
-        self.disconnect()
-        return False
-
-    def enable_control(self, percent: int = 100) -> None:
-        if percent < 0 or percent > 100:
-            raise ValueError
-
-        self.arm.set_speed_percent(percent)
-
     def enable_torque(self) -> None:
         def enable():
             result = set()
 
-            for name in self.joint_names:
-                result.add(self.arm.enable(self.name_to_idx[name]))
+            for i in range(self.arm.joint_nums):
+                result.add(self.arm.enable(self._cast_idx(i + 1)))
 
             enabled = False not in result
             return enabled
@@ -226,8 +191,8 @@ class PiperBus:
     def disable_torque(self) -> None:
         def disable():
             result = set()
-            for name in self.joint_names:
-                result.add(self.arm.disable(self.name_to_idx[name]))
+            for i in range(self.arm.joint_nums):
+                result.add(self.arm.disable(self._cast_idx(i + 1)))
 
             disabled = False not in result
             return disabled
@@ -247,6 +212,15 @@ class PiperBus:
         joints = np.asarray(joints, dtype=np.float64)
         self.arm.move_j(list(joints))
 
+    def _cast_idx(self, index: int):
+        if isinstance(self.arm, PiperDriverDefault):
+            index = cast(Literal[1, 2, 3, 4, 5, 6], index)
+            return index
+
+        elif isinstance(self.arm, NeroDriverDefault):
+            index = cast(Literal[1, 2, 3, 4, 5, 6, 7], index)
+            return index
+
     def move_mit(
         self,
         pos: ArrayLike,
@@ -262,8 +236,8 @@ class PiperBus:
         else:
             vel = np.asarray(vel)
 
-        for i, name in enumerate(self.joint_names):
-            self.arm.move_mit(self.name_to_idx[name], pos[i], vel[i], kp, kd, t_ff)
+        for i in range(self.arm.joint_nums):
+            self.arm.move_mit(self._cast_idx(i + 1), pos[i], vel[i], kp, kd, t_ff)
 
     def read_joints(self) -> Joints:
         def read():
@@ -274,8 +248,8 @@ class PiperBus:
             current: list[float] = []
 
             motor_states = [
-                self.arm.get_motor_states(self.name_to_idx[name])
-                for name in self.joint_names
+                self.arm.get_motor_states(self._cast_idx(i + 1))
+                for i in range(self.arm.joint_nums)
             ]
 
             for ms in motor_states:
@@ -315,41 +289,6 @@ class PiperBus:
 
         return joints
 
-    def move_gripper(
-        self,
-        width: float,
-        *,
-        force: float = 1.0,
-    ) -> None:
-        self.ee.move_gripper_m(width, force)
-
-    def read_gripper(self) -> Gripper:
-        def read():
-            gs = self.ee.get_gripper_status()
-
-            if gs is None:
-                return None
-
-            msg = gs.msg
-
-            return Gripper(
-                timestamp=gs.timestamp,
-                width=msg.value,
-                force=msg.force,
-            )
-
-        t0 = time.perf_counter()
-        gripper = read()
-        while gripper is None:
-            if time.perf_counter() - t0 >= self.timeout:
-                raise TimeoutError
-
-            time.sleep(0)
-
-            gripper = read()
-
-        return gripper
-
     def read_status(self) -> Status:
         def read():
             status = self.arm.get_arm_status()
@@ -362,18 +301,22 @@ class PiperBus:
             error = msg.err_status
 
             comm_errors = {
-                name: getattr(error, f"communication_status_joint_{i + 1}")
-                for i, name in enumerate(self.joint_names)
+                i: getattr(error, f"communication_status_joint_{i + 1}")
+                for i in range(self.arm.joint_nums)
             }
             limit_exceeds = {
-                name: getattr(error, f"joint_{i + 1}_angle_limit")
-                for i, name in enumerate(self.joint_names)
+                i: getattr(error, f"joint_{i + 1}_angle_limit")
+                for i in range(self.arm.joint_nums)
             }
+
+            mode = msg.mode_feedback
+            if mode == 0x06:
+                mode = MoveType.MIT
 
             return Status(
                 ArmStatus(msg.arm_status),
                 ControlType(msg.ctrl_mode),
-                MoveType(msg.mode_feedback),
+                MoveType(mode),
                 MotionStatus(msg.motion_status),
                 TeachingStatus(msg.teach_status),
                 comm_errors,
@@ -393,8 +336,18 @@ class PiperBus:
 
         return status
 
-    def calibrate(self, name: str) -> None:
-        self.arm.calibrate_joint(self.name_to_idx[name])
-
     def reset(self):
         self.arm.reset()
+
+    def e_stop(self):
+        self.arm.electronic_emergency_stop()
+
+    def calibrate(self, index: int) -> None:
+        supported_nero = isinstance(self.arm, NeroDriverV111)
+        is_piper = isinstance(self.arm, PiperDriverDefault)
+
+        if supported_nero or is_piper:
+            self.arm.calibrate_joint(self._cast_idx(index + 1))
+            return
+
+        raise NotImplementedError

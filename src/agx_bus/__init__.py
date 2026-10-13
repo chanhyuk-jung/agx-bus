@@ -1,3 +1,4 @@
-from .bus import PiperBus
+from .bus import AgilexBus
+from .gripper import AgilexGripper
 
-__all__ = ["PiperBus"]
+__all__ = ["AgilexBus", "AgilexGripper"]

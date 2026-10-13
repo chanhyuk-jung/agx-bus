@@ -5,7 +5,7 @@ build-backend = "uv_build"
 
 [project]
 name = "agx-bus"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "numpy>=2.0.0,<2.3.0",
     # pyAgxArm dependencies
@@ -33,5 +33,4 @@ select = [
 ignore = []
 
 [tool.ty.src]
-include = ["src"]
 exclude = ["src/agx_bus/pyAgxArm"]
