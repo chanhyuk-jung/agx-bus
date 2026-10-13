@@ -21,9 +21,14 @@ dev = [
 
 [tool.ruff]
 line-length = 88
+exclude = ["src/agx_bus/pyAgxArm"]
 
 [tool.ruff.lint]
 select = [
     "E", "W", "F", "I"
 ]
 ignore = []
+
+[tool.ty.src]
+include = ["src"]
+exclude = ["src/agx_bus/pyAgxArm"]
