@@ -5,7 +5,8 @@ from typing import Literal
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
-from pyAgxArm import (
+
+from .pyAgxArm import (
     AgxArmFactory,
     ArmModel,
     create_agx_arm_config,
