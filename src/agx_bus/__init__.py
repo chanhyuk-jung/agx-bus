@@ -1,3 +1,3 @@
-from .bus import Bus
+from .bus import PiperBus
 
-__all__ = ["Bus"]
+__all__ = ["PiperBus"]

@@ -130,7 +130,7 @@ class Status:
         return any(self.limit_exceeds)
 
 
-class Bus:
+class PiperBus:
     joint_names: tuple[str, ...] = (
         "base",
         "shoulder",
@@ -141,9 +141,10 @@ class Bus:
     )
 
     def __init__(
-        self, channel: str, *, version: str = "default", timeout: float = 1.0
+        self, name: str, *, channel: str, version: str = "default", timeout: float = 1.0
     ) -> None:
         self.timeout = timeout
+
         self.name_to_idx: dict[str, Literal[1, 2, 3, 4, 5, 6]] = {
             "base": 1,
             "shoulder": 2,
@@ -160,8 +161,17 @@ class Bus:
             "v189": "v189",
         }
 
+        name_to_enum = {
+            "piper": ArmModel.PIPER,
+            "piper_h": ArmModel.PIPER_H,
+            "piper_l": ArmModel.PIPER_L,
+            "piper_x": ArmModel.PIPER_X,
+        }
+
+        robot = name_to_enum[name]
+
         cfg = create_agx_arm_config(
-            robot=ArmModel.PIPER,
+            robot=robot,
             channel=channel,
             firmeware_version=version_map[version],
         )
