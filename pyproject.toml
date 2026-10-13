@@ -1,0 +1,29 @@
+[build-system]
+requires = ["uv_build >= 0.12.10, <0.13.0"]
+build-backend = "uv_build"
+
+
+[project]
+name = "agx-bus"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=2.0.0,<2.3.0",
+]
+version = "0.0.1"
+
+[project.optional-dependencies]
+dev = [
+    "ruff",
+    "ty",
+    "mypy",
+]
+
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = [
+    "E", "W", "F", "I"
+]
+ignore = []
