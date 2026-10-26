@@ -1,0 +1,36 @@
+[build-system]
+requires = ["uv_build >= 0.12.10, <0.13.0"]
+build-backend = "uv_build"
+
+
+[project]
+name = "agx-bus"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=2.0.0,<2.3.0",
+    # pyAgxArm dependencies
+    "python-can>=3.3.4",
+    "typing-extensions>=3.7.4.3",
+]
+version = "0.0.1"
+
+[project.optional-dependencies]
+dev = [
+    "ruff",
+    "ty",
+    "mypy",
+]
+
+
+[tool.ruff]
+line-length = 88
+exclude = ["src/agx_bus/pyAgxArm"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W", "F", "I"
+]
+ignore = []
+
+[tool.ty.src]
+exclude = ["src/agx_bus/pyAgxArm"]

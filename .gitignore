@@ -1,0 +1,22 @@
+### Environments & Dependencies ###
+.venv
+.python-version
+__pypackages__/
+
+### Compiled & Cached Files ###
+__pycache__/
+*.py[cod]
+*.so
+.cache/
+.ruff_cache/
+.mypy_cache/
+
+# Vim
+*.swp
+
+# Other
+*~
+
+### OS Specific ###
+# macOS
+.DS_Store
