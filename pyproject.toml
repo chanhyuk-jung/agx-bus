@@ -2,25 +2,37 @@
 requires = ["uv_build >= 0.12.10, <0.13.0"]
 build-backend = "uv_build"
 
+[project.urls]
+source = "https://github.com/chanhyuk-jung/agx-bus"
 
 [project]
 name = "agx-bus"
+version = "0.1.1"
+description = "Agx Bus: Bus interface for AgileX Robotics arms"
+readme = "README.md"
+license = { text = "LGPL-3.0" }
 requires-python = ">=3.11"
+authors = [
+    { name = "Chanhyuk Jung", email = "seagullcjung@gmail.com" },
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+keywords = ["robotics"]
+
 dependencies = [
-    "numpy>=2.0.0,<2.3.0",
+    "numpy",
     # pyAgxArm dependencies
     "python-can>=3.3.4",
     "typing-extensions>=3.7.4.3",
 ]
-version = "0.1.1"
-
-[project.optional-dependencies]
-dev = [
-    "ruff",
-    "ty",
-    "mypy",
-]
-
 
 [tool.ruff]
 line-length = 88
@@ -31,6 +43,9 @@ select = [
     "E", "W", "F", "I"
 ]
 ignore = []
+
+[tool.ruff.lint.isort]
+known-first-party = ["agx_bus"]
 
 [tool.ty.src]
 exclude = ["src/agx_bus/pyAgxArm"]
