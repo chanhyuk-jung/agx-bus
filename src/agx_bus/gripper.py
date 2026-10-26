@@ -17,8 +17,8 @@ class Status:
     enabled: bool
     homing: bool
 
-    def not_ok(self) -> bool:
-        return any(
+    def is_ok(self) -> bool:
+        return not any(
             [
                 self.low_voltage,
                 self.motor_overheating,
@@ -28,12 +28,6 @@ class Status:
                 self.error,
             ]
         )
-
-    def is_enabled(self):
-        return self.enabled
-
-    def is_homing(self):
-        return self.homing
 
 
 @dataclass(frozen=True)
@@ -121,3 +115,6 @@ class AgilexGripper:
             )
 
         return poll_until(read, timeout=self.timeout, wait=0)
+
+    def set_zero(self):
+        self.ee.calibrate_gripper(timeout=self.timeout)

@@ -84,7 +84,7 @@ def resolve_firmware_profile(robot: str, firmware_version: str) -> str:
     --------
     Piper firmware:
 
-    >>> from pyAgxArm import ArmModel, resolve_firmware_profile
+    >>> from agx_bus.pyAgxArm import ArmModel, resolve_firmware_profile
     >>> resolve_firmware_profile(ArmModel.PIPER, "S-V1.8-8")
     'v188'
 

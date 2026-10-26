@@ -97,6 +97,8 @@ class Status:
     motion: MotionStatus
     teaching: TeachingStatus
 
+    trajectory_index: int
+
     comm_errors: dict[int, bool]
     limit_exceeds: dict[int, bool]
 
@@ -115,6 +117,12 @@ class Status:
             return False
 
         return None
+
+    def not_teaching(self) -> bool | None:
+        return self.teaching == TeachingStatus.DISABLED
+
+    def arm_ok(self) -> bool:
+        return self.arm == ArmStatus.NORMAL
 
     def comm_ok(self) -> bool:
         return not any(self.comm_errors.values())
@@ -146,19 +154,22 @@ class DriverStatus:
 
     low_voltage: NDArray[np.bool]
     motor_overheating: NDArray[np.bool]
+
     overcurrent: NDArray[np.bool]
     overheating: NDArray[np.bool]
+
     collision: NDArray[np.bool]
+
     error: NDArray[np.bool]
+
     enabled: NDArray[np.bool]
     stalled: NDArray[np.bool]
 
-    def not_ok(self) -> bool:
-        return np.any(
+    def driver_ok(self) -> bool:
+        return not np.any(
             np.stack(
                 [
                     self.low_voltage,
-                    self.motor_overheating,
                     self.overcurrent,
                     self.overheating,
                     self.collision,
@@ -166,8 +177,10 @@ class DriverStatus:
                     self.stalled,
                 ]
             ),
-            axis=0,
         )
+
+    def motor_ok(self) -> bool:
+        return not np.any(self.motor_overheating)
 
     def is_enabled(self):
         return np.all(self.enabled)
@@ -323,6 +336,7 @@ class AgilexBus:
                 MoveType(mode),
                 MotionStatus(msg.motion_status),
                 TeachingStatus(msg.teach_status),
+                msg.trajectory_num,
                 comm_errors,
                 limit_exceeds,
             )
@@ -411,7 +425,7 @@ class AgilexBus:
     def e_stop(self):
         self.arm.electronic_emergency_stop()
 
-    def calibrate(self, index: int) -> None:
+    def set_zero(self, index: int) -> None:
         supported_nero = isinstance(self.arm, NeroDriverV111)
         is_piper = isinstance(self.arm, PiperDriverDefault)
 

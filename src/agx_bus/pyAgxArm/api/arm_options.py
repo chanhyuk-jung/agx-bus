@@ -8,7 +8,7 @@ class ArmModel:
 
     Use::
 
-        from pyAgxArm import ArmModel
+        from agx_bus.pyAgxArm import ArmModel
         create_agx_arm_config(robot=ArmModel.PIPER, ...)
     """
 
@@ -33,7 +33,7 @@ class PiperFW:
 
     Use::
 
-        from pyAgxArm import PiperFW
+        from agx_bus.pyAgxArm import PiperFW
         create_agx_arm_config(..., firmeware_version=PiperFW.V188)
     """
 
@@ -58,7 +58,7 @@ class NeroFW:
 
     Use::
 
-        from pyAgxArm import NeroFW
+        from agx_bus.pyAgxArm import NeroFW
         create_agx_arm_config(..., firmeware_version=NeroFW.V111)
     """
 

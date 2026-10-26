@@ -13,8 +13,8 @@ from .....msgs.effector.revo2.default import (
     FingerPosTimeCtrl,
 )
 from .....msgs.core.msg_abstract import MessageAbstract
-from pyAgxArm.utiles.fps import FPSManager
-from pyAgxArm.utiles.numeric_codec import NumericCodec as nc
+from agx_bus.pyAgxArm.utiles.fps import FPSManager
+from agx_bus.pyAgxArm.utiles.numeric_codec import NumericCodec as nc
 
 
 class Codec:

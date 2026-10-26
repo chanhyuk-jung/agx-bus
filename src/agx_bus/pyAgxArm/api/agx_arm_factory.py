@@ -57,7 +57,7 @@ def create_agx_arm_config(
     robot : str
         Robotic arm model. Use ``ArmModel`` constants for IDE hints::
 
-            from pyAgxArm import ArmModel
+            from agx_bus.pyAgxArm import ArmModel
             ArmModel.PIPER  / ArmModel.PIPER_H / ArmModel.PIPER_L
             ArmModel.PIPER_X / ArmModel.NERO
 
@@ -70,7 +70,7 @@ def create_agx_arm_config(
 
         Piper series (piper / piper_h / piper_l / piper_x) — ``PiperFW``::
 
-            from pyAgxArm import PiperFW
+            from agx_bus.pyAgxArm import PiperFW
             PiperFW.DEFAULT  # firmware ≤ S-V1.8-2
             PiperFW.V183     # firmware S-V1.8-3 ~ S-V1.8-7
             PiperFW.V188     # firmware = S-V1.8-8
@@ -78,7 +78,7 @@ def create_agx_arm_config(
 
         Nero series — ``NeroFW``::
 
-            from pyAgxArm import NeroFW
+            from agx_bus.pyAgxArm import NeroFW
             NeroFW.DEFAULT   # firmware ≤ 1.10
             NeroFW.V111      # firmware = 1.11
             NeroFW.V112      # firmware = 1.12

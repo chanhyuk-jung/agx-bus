@@ -5,7 +5,7 @@ import time
 import argparse
 import os
 from platform import system
-from pyAgxArm import AgxArmFactory, create_agx_arm_config, resolve_firmware_profile
+from agx_bus.pyAgxArm import AgxArmFactory, create_agx_arm_config, resolve_firmware_profile
 
 
 def resolve_can_backend():

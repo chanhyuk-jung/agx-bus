@@ -122,7 +122,7 @@ class Driver:
 
     Quick start (``hand`` is this driver)::
 
-        from pyAgxArm import AgxArmFactory
+        from agx_bus.pyAgxArm import AgxArmFactory
 
         robot = AgxArmFactory.create_arm(cfg)
         robot.connect()

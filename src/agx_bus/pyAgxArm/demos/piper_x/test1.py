@@ -1,6 +1,6 @@
 import time
 from platform import system
-from pyAgxArm import create_agx_arm_config, AgxArmFactory, ArmModel, PiperFW
+from agx_bus.pyAgxArm import create_agx_arm_config, AgxArmFactory, ArmModel, PiperFW
 
 
 def wait_motion_done(robot, timeout: float = 5.0, poll_interval: float = 0.1) -> bool:
