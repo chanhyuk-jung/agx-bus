@@ -7,7 +7,7 @@ source = "https://github.com/chanhyuk-jung/agx-bus"
 
 [project]
 name = "agx-bus"
-version = "0.1.1"
+version = "0.2.0"
 description = "Agx Bus: Bus interface for AgileX Robotics arms"
 readme = "README.md"
 license = { text = "LGPL-3.0" }
