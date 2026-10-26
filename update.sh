@@ -2,11 +2,11 @@
 SOURCE_BRANCH="pyAgxArm-source"
 STAGING_BRANCH="pyAgxArm-staging"
 
-git remote add pyAgxArm https://github.com/agilexrobotics/pyAgxArm.git
-
 echo
 echo "Fetch new changes from pyAgxArm"
-echo -----------------------------------------
+echo ---------------------------------
+git remote add pyAgxArm https://github.com/agilexrobotics/pyAgxArm.git
+
 git fetch pyAgxArm master
 
 LATEST_COMMIT=`git ls-remote pyAgxArm | grep "refs/heads/master" | awk '{ print $1}'`
@@ -29,13 +29,13 @@ git checkout main
 #
 echo
 echo "Add in changes"
-echo -----------------------------------------
-git subtree merge --squash -P src/agx_bus/pyAgxArm ${STAGING_BRANCH} --message "Update pyAgxArm from https://github.com/agilexrobotics/pyAgxArm${LATEST_COMMIT}"
+echo ----------------
+git subtree add --squash -P src/agx_bus/pyAgxArm ${STAGING_BRANCH} --message "Update pyAgxArm from https://github.com/agilexrobotics/pyAgxArm${LATEST_COMMIT}"
 
 # clean up
 echo
 echo "Removing branches"
-echo
+echo -------------------
 git branch -D ${STAGING_BRANCH}
 git branch -D ${SOURCE_BRANCH}
 
