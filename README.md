@@ -1,6 +1,14 @@
 # Agx Bus: Bus interface for AgileX Robotics arms
 
-Agx Bus provides an easy way to use robot arms and grippers from AgileX Robotics. We vendor [pyAgxArm](https://github.com/agilexrobotics/pyAgxArm.git) for maximum comparibility and provide a bus-like api for sending and receiving data to all joints.
+Agx Bus is a library for robot arms and grippers from AgileX Robotics. By vendoring [pyAgxArm](https://github.com/agilexrobotics/pyAgxArm.git), bug-fixes and features from first-party drivers are supported with a much simpler API.
+
+**Why `agx_bus`?**
+
+1. **Enforced correctness.** If there aren't any errors, your code will always work as expected. `agx_bus` raises errors when the desired behavior is not achievable.
+
+2. **Automatic polling.** Unlike `piper_sdk` or `pyAgxArm`, you don't have to guess whether data is available. `agx_bus` either raises an error or returns a value. Polling is done internally so you don't have to.
+
+3. **Synchronization.** `agx_bus` synchronizes reads across joints as tightly as possible, which gives a more accurate state of the robot arm.
 
 ## Quick Start
 
@@ -48,13 +56,19 @@ Enable torque to start moving:
 bus.enable_torque()
 
 bus.move_joints([0] * 6)
-ee.move(width=0.1)
 ```
 
 Make sure to support the arm when you disable torque with `bus.disable_torque()` to prevent damage to the robot arm:
 
 ```python
 bus.disable_torque()
+```
+
+The gripper can be used without enabling torque:
+
+```python
+bus.disable_torque()
+ee.move(width=0.1)
 ```
 
 ### Emergency Stop
@@ -73,6 +87,12 @@ Make sure to reset the arm to clear e-stop or any other errors:
 bus.reset()
 ```
 
+You can also reset the gripper:
+
+```python
+ee.reset()
+```
+
 ### Diagnostics
 
 When something goes wrong, read the internals first:
@@ -83,12 +103,14 @@ while True:
     motor_status = bus.read_motor_status()
     gripper = ee.read()
 
-    print(f"arm is ok: {status.arm_ok()}")
-    print(f"comm is ok: {status.comm_ok()}")
-    print(f"limit exceeded: {status.limit_exceeded()}")
-    print(f"motor is ok: {motor_status.motor_ok()}")
-    print(f"driver is ok: {motor_status.driver_ok()}")
-    print(f"gripper is ok: {gripper.status.is_ok()}\n")
+    print(f"arm is ok: {status.is_arm_ok}")
+    print(f"comm is ok: {status.is_comm_ok}")
+    print(f"limit exceeded: {status.limit_exceeded}")
+    print(f"motor is ok: {motor_status.is_motor_ok}")
+    print(f"driver is ok: {motor_status.is_driver_ok}")
+
+    print(f"gripper motor is ok: {gripper.status.is_motor_ok()}")
+    print(f"gripper driver is ok: {gripper.status.is_driver_ok()}\n")
 
     time.sleep(0.1)
 ```
@@ -113,3 +135,5 @@ pip install -e .
 ```
 
 ## License
+
+This project is licensed under the LGPL-3.0 License - see the [LICENSE](LICENSE) file for details.
