@@ -503,6 +503,15 @@ class AgilexBus:
         self.arm.electronic_emergency_stop()
         self.is_torque_enabled = False
 
+    def clear_errors(self):
+        if not self.is_connected:
+            raise BusNotConnectedError
+
+        def clear():
+            return self.arm.clear_joint_error(255)
+
+        poll_until(clear, timeout=self.timeout, wait=0.1)
+
     def set_zero(self, index: int) -> None:
         if not self.is_connected:
             raise BusNotConnectedError
