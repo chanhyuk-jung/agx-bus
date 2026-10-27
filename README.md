@@ -81,10 +81,15 @@ bus.e_stop()
 
 ### Reset
 
-Make sure to reset the arm to clear e-stop or any other errors:
+Make sure to reset the arm to clear e-stop. This will disconnect the bus as the connection will also be reset:
 
 ```python
 bus.reset()
+
+# wait for the robot arm to reset
+time.sleep(1)
+
+bus.connect()
 ```
 
 You can also reset the gripper:

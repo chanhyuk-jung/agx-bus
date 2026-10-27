@@ -201,13 +201,26 @@ class DriverStatus:
 
 
 class AgilexBus:
-    def __init__(self, channel: str, *, name: str, version: str, timeout: float = 1.0):
+    def __init__(
+        self,
+        channel: str,
+        interface: str = "socketcan",
+        bitrate: int = 1_000_000,
+        *,
+        name: str,
+        version: str,
+        timeout: float = 1.0,
+    ):
         if name == "nero":
             if version not in ["default", "v111", "v112", "v120", "v121"]:
                 raise NotImplementedError
 
             cfg = create_agx_arm_config(
-                robot=name, firmeware_version=version, channel=channel
+                robot=name,
+                firmeware_version=version,
+                channel=channel,
+                interface=interface,
+                bitrate=bitrate,
             )
 
             self.arm: NeroDriverDefault | NeroDriverV111 = AgxArmFactory.create_arm(cfg)
@@ -219,7 +232,11 @@ class AgilexBus:
                 raise NotImplementedError
 
             cfg = create_agx_arm_config(
-                robot=name, firmeware_version=version, channel=channel
+                robot=name,
+                firmeware_version=version,
+                channel=channel,
+                interface=interface,
+                bitrate=bitrate,
             )
             self.arm: PiperDriverDefault = AgxArmFactory.create_arm(cfg)
 
@@ -233,11 +250,11 @@ class AgilexBus:
             raise AgxBusException("Bus is already connected.")
 
         self.arm.connect()
+        self.is_connected = True
 
         self.arm.set_speed_percent(percent=100)
+        self.arm.set_speed_percent(percent=100)
         time.sleep(0.1)
-
-        self.is_connected = True
 
         motor_status = self.read_motor_status()
         self.is_torque_enabled = motor_status.is_torque_enabled
@@ -338,6 +355,8 @@ class AgilexBus:
                 )
 
             floats = np.array(floats).T
+
+            floats[1:] = floats[1:] // 0.001 * 0.001
 
             return Joints(
                 **dict(
@@ -474,6 +493,8 @@ class AgilexBus:
             raise BusNotConnectedError
 
         self.arm.reset()
+
+        self.disconnect()
 
     def e_stop(self):
         if not self.is_connected:
