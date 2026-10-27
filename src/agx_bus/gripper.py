@@ -17,6 +17,7 @@ class Status:
     torque_enabled: bool
     homing: bool
 
+    @property
     def is_driver_ok(self) -> bool:
         return not any(
             [
@@ -28,6 +29,7 @@ class Status:
             ]
         )
 
+    @property
     def is_motor_ok(self) -> bool:
         return not self.motor_overheating
 
