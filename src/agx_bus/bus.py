@@ -6,7 +6,7 @@ from typing import Literal, cast
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-from .pyAgxArm import AgxArmFactory, create_agx_arm_config
+from .pyAgxArm import AgxArmFactory, create_agx_arm_config, resolve_firmware_profile
 from .pyAgxArm.protocols.can_protocol.drivers import (
     NeroDriverDefault,
     NeroDriverV111,
@@ -217,7 +217,7 @@ class AgilexBus:
 
             cfg = create_agx_arm_config(
                 robot=name,
-                firmeware_version=version,
+                firmeware_version="default",
                 channel=channel,
                 interface=interface,
                 bitrate=bitrate,
@@ -241,6 +241,8 @@ class AgilexBus:
                 bitrate=bitrate,
             )
             self.robot: PiperDriverDefault = AgxArmFactory.create_arm(cfg)
+
+        self.name = name
 
         self.timeout = timeout
 
@@ -481,6 +483,18 @@ class AgilexBus:
             )
 
         return poll_until(read, timeout=self.timeout, wait=0)
+
+    def read_info(self):
+        info: dict = poll_until(self.robot.get_firmware, timeout=self.timeout, wait=0)
+
+        hw_version = info.pop("hardware_version")
+        info["hardware_version"] = hw_version
+
+        fw_version = info.pop("software_version")
+        info["firmware_version"] = fw_version
+        info["driver_version"] = resolve_firmware_profile(self.name, fw_version)
+
+        return info
 
     def reset(self):
         if not self.is_connected:
