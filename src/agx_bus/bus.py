@@ -208,7 +208,7 @@ class AgilexBus:
         bitrate: int = 1_000_000,
         *,
         name: str,
-        version: str,
+        version: str = "default",
         timeout: float = 1.0,
     ):
         if name == "nero":
