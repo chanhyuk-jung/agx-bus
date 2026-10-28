@@ -1,20 +1,23 @@
 [build-system]
-requires = ["flit_core >=3.2,<4"]
-build-backend = "flit_core.buildapi"
+requires = ["hatchling >= 1.26"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "src/agx_bus/__init__.py"
 
 [project.urls]
 source = "https://github.com/chanhyuk-jung/agx-bus"
 
 [project]
 name = "agx-bus"
-dynamic = ["version"]
-description = "Agx Bus: Bus interface for AgileX Robotics arms"
-readme = "README.md"
-license = { text = "LGPL-3.0" }
-requires-python = ">=3.8"
 authors = [
     { name = "Chanhyuk Jung", email = "seagullcjung@gmail.com" },
 ]
+description = "Agx Bus: Bus interface for AgileX Robotics arms"
+dynamic = ["version"]
+readme = "README.md"
+license = "LGPL-3.0"
+requires-python = ">=3.8"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -39,7 +42,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-tests = [
+dev = [
     "pytest",
 ]
 
