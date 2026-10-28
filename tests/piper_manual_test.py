@@ -67,6 +67,7 @@ def test_torque_enable(bus, robot):
 
         assert torque_enabled is True
 
+
 def test_move_joints(bus, robot):
     test_torque_enable(bus, robot)
 
@@ -108,6 +109,7 @@ def test_estop(bus, robot):
 
     status = poll_until(robot.get_arm_status, timeout=1.0, wait=0)
     arm_status = status.msg.arm_status
+
     assert arm_status == EMERGENCY_STOP
 
 
