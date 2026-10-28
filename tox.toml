@@ -1,0 +1,5 @@
+env_list = ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
+
+[env_run_base]
+deps = ["pytest>=8"]
+commands = [["pytest", "tests", { replace = "posargs", extend = true }]]

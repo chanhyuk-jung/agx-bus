@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import time
 from dataclasses import dataclass
 from enum import IntEnum, unique
@@ -482,7 +484,7 @@ class AgilexBus:
                 ),
             )
 
-        return poll_until(read, timeout=self.timeout, wait=0)
+        return poll_until(read, timeout=self.timeout, wait=0.1)
 
     def read_info(self):
         info: dict = poll_until(self.robot.get_firmware, timeout=self.timeout, wait=0)

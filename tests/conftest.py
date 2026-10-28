@@ -17,7 +17,10 @@ def pytest_configure(config):
 
 
 def pytest_collection_modifyitems(config, items):
-    if config.getoption("--can"):
+    channel = config.getoption("--can")
+    name = config.getoption("--name")
+
+    if channel is not None and name is not None:
         return
 
     skip_piper = pytest.mark.skip(reason="Requires PiPER series arm to run")

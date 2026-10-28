@@ -1,3 +1,5 @@
+__version__ = "0.3.0"
+
 from .bus import AgilexBus
 from .gripper import AgilexGripper
 from .utils import (
