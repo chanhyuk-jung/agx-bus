@@ -36,7 +36,7 @@ def bus(channel, name, version):
     bus.disconnect()
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def ee(bus):
     return AgilexGripper.attach_to(bus)
 
@@ -89,6 +89,34 @@ def test_move_joints(bus, robot):
     joints = ja.msg
 
     np.testing.assert_allclose(joints, qpos, atol=0.01)
+
+
+def test_read_joints(bus, robot):
+    joints = bus.read_joints()
+
+    for i in range(6):
+
+        def read():
+            return robot.get_motor_states(i + 1)
+
+        ms = poll_until(read, timeout=1.0, wait=0)
+
+        np.testing.assert_equal(joints.position[i], ms.msg.position)
+        np.testing.assert_equal(joints.velocity[i], ms.msg.velocity)
+        np.testing.assert_equal(joints.current[i], ms.msg.current)
+        np.testing.assert_equal(joints.torque[i], ms.msg.torque)
+
+
+def test_read_gripper(ee, end_effector):
+    gripper = ee.read()
+    gs = poll_until(end_effector.get_gripper_status, timeout=1.0, wait=0)
+
+    if gs.msg.mode == "width":
+        np.testing.assert_equal(gripper.width, gs.msg.value)
+    elif gs.msg.mode == "angle":
+        np.testing.assert_equal(gripper.angle, gs.msg.value)
+
+    np.testing.assert_equal(gripper.force, gs.msg.force)
 
 
 def test_move_gripper(ee, end_effector):

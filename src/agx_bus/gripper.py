@@ -149,5 +149,3 @@ class AgilexGripper:
             raise BusNotConnectedError
 
         poll_until(self.end_effector.reset_gripper, timeout=self.timeout, wait=0.01)
-
-        self.disable_torque()

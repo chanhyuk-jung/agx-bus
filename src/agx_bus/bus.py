@@ -387,6 +387,8 @@ class AgilexBus:
             }
 
             mode = msg.mode_feedback
+
+            # MIT = 0x06 for Piper firmware < v188, Nero firmware < 1.11
             if mode == 0x06:
                 mode = MoveType.MIT
 
