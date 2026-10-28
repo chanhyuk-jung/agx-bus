@@ -73,7 +73,7 @@ If you need to quickly stop the robot, trigger e-stop:
 bus.e_stop()
 ```
 
-This does not affect the gripper. Manually disable gripper torque:
+The gripper torque is still on. Manually disable gripper torque:
 
 ```python
 ee.disable_torque()
@@ -104,12 +104,6 @@ Make sure to reset the arm to clear e-stop. This will also disable torque:
 
 ```python
 bus.reset()
-```
-
-You can also reset the gripper:
-
-```python
-ee.reset()
 ```
 
 ## Installation

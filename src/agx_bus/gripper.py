@@ -144,8 +144,10 @@ class AgilexGripper:
 
         self.end_effector.calibrate_gripper(timeout=self.timeout)
 
-    def reset(self):
+    def clear_errors(self):
         if not self.is_connected:
             raise BusNotConnectedError
 
-        poll_until(self.end_effector.reset_gripper, timeout=self.timeout, wait=1e-6)
+        poll_until(self.end_effector.reset_gripper, timeout=self.timeout, wait=0.01)
+
+        self.disable_torque()
