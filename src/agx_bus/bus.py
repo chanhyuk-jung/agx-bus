@@ -223,7 +223,9 @@ class AgilexBus:
                 bitrate=bitrate,
             )
 
-            self.arm: NeroDriverDefault | NeroDriverV111 = AgxArmFactory.create_arm(cfg)
+            self.robot: NeroDriverDefault | NeroDriverV111 = AgxArmFactory.create_arm(
+                cfg
+            )
         else:
             if name not in ["piper", "piper_h", "piper_l", "piper_x"]:
                 raise NotImplementedError
@@ -238,7 +240,7 @@ class AgilexBus:
                 interface=interface,
                 bitrate=bitrate,
             )
-            self.arm: PiperDriverDefault = AgxArmFactory.create_arm(cfg)
+            self.robot: PiperDriverDefault = AgxArmFactory.create_arm(cfg)
 
         self.timeout = timeout
 
@@ -249,11 +251,11 @@ class AgilexBus:
         if self.is_connected:
             raise AgxBusException("Bus is already connected.")
 
-        self.arm.connect()
+        self.robot.connect()
         self.is_connected = True
 
-        self.arm.set_speed_percent(percent=100)
-        self.arm.set_speed_percent(percent=100)
+        self.robot.set_speed_percent(percent=100)
+        self.robot.set_speed_percent(percent=100)
         time.sleep(0.1)
 
         motor_status = self.read_motor_status()
@@ -261,7 +263,7 @@ class AgilexBus:
 
     def disconnect(self) -> None:
         if self.is_connected:
-            self.arm.disconnect()
+            self.robot.disconnect()
 
         self.is_connected = False
 
@@ -270,13 +272,7 @@ class AgilexBus:
             raise BusNotConnectedError
 
         def enable():
-            result = set()
-
-            for i in range(self.arm.joint_nums):
-                result.add(self.arm.enable(self._cast_idx(i + 1)))
-
-            enabled = False not in result
-            return enabled
+            return self.robot.enable(255)
 
         poll_until(enable, timeout=self.timeout, wait=0.01)
         self.is_torque_enabled = True
@@ -286,8 +282,8 @@ class AgilexBus:
 
             def disable():
                 result = set()
-                for i in range(self.arm.joint_nums):
-                    result.add(self.arm.disable(self._cast_idx(i + 1)))
+                for i in range(self.robot.joint_nums):
+                    result.add(self.robot.disable(self._cast_idx(i + 1)))
 
                 disabled = False not in result
                 return disabled
@@ -297,17 +293,17 @@ class AgilexBus:
 
     def move_joints(self, joints: ArrayLike) -> None:
         if not self.is_torque_enabled:
-            raise AgxBusException("Torque is not enabled.")
+            raise TorqueNotEnabledError
 
         joints = np.asarray(joints, dtype=np.float64)
-        self.arm.move_j(list(joints))
+        self.robot.move_j(list(joints))
 
     def _cast_idx(self, index: int):
-        if isinstance(self.arm, PiperDriverDefault):
+        if isinstance(self.robot, PiperDriverDefault):
             index = cast(Literal[1, 2, 3, 4, 5, 6], index)
             return index
 
-        elif isinstance(self.arm, NeroDriverDefault):
+        elif isinstance(self.robot, NeroDriverDefault):
             index = cast(Literal[1, 2, 3, 4, 5, 6, 7], index)
             return index
 
@@ -329,8 +325,8 @@ class AgilexBus:
         else:
             vel = np.asarray(vel)
 
-        for i in range(self.arm.joint_nums):
-            self.arm.move_mit(self._cast_idx(i + 1), pos[i], vel[i], kp, kd, t_ff)
+        for i in range(self.robot.joint_nums):
+            self.robot.move_mit(self._cast_idx(i + 1), pos[i], vel[i], kp, kd, t_ff)
 
     def read_joints(self) -> Joints:
         if not self.is_connected:
@@ -340,8 +336,8 @@ class AgilexBus:
             floats = []
 
             motor_states = [
-                self.arm.get_motor_states(self._cast_idx(i + 1))
-                for i in range(self.arm.joint_nums)
+                self.robot.get_motor_states(self._cast_idx(i + 1))
+                for i in range(self.robot.joint_nums)
             ]
 
             for ms in motor_states:
@@ -355,8 +351,6 @@ class AgilexBus:
                 )
 
             floats = np.array(floats).T
-
-            floats[1:] = floats[1:] // 0.001 * 0.001
 
             return Joints(
                 **dict(
@@ -374,7 +368,7 @@ class AgilexBus:
             raise BusNotConnectedError
 
         def read():
-            status = self.arm.get_arm_status()
+            status = self.robot.get_arm_status()
 
             if status is None:
                 return None
@@ -385,11 +379,11 @@ class AgilexBus:
 
             comm_errors = {
                 i: getattr(error, f"communication_status_joint_{i + 1}")
-                for i in range(self.arm.joint_nums)
+                for i in range(self.robot.joint_nums)
             }
             limit_exceeds = {
                 i: getattr(error, f"joint_{i + 1}_angle_limit")
-                for i in range(self.arm.joint_nums)
+                for i in range(self.robot.joint_nums)
             }
 
             mode = msg.mode_feedback
@@ -415,8 +409,8 @@ class AgilexBus:
 
         def read():
             driver_states = [
-                self.arm.get_driver_states(self._cast_idx(i + 1))
-                for i in range(self.arm.joint_nums)
+                self.robot.get_driver_states(self._cast_idx(i + 1))
+                for i in range(self.robot.joint_nums)
             ]
 
             floats = []
@@ -492,15 +486,16 @@ class AgilexBus:
         if not self.is_connected:
             raise BusNotConnectedError
 
-        self.arm.reset()
-
+        self.robot.reset()
         self.disconnect()
+
+        time.sleep(1)
 
     def e_stop(self):
         if not self.is_connected:
             raise BusNotConnectedError
 
-        self.arm.electronic_emergency_stop()
+        self.robot.electronic_emergency_stop()
         self.is_torque_enabled = False
 
     def clear_errors(self):
@@ -508,7 +503,7 @@ class AgilexBus:
             raise BusNotConnectedError
 
         def clear():
-            return self.arm.clear_joint_error(255)
+            return self.robot.clear_joint_error(255)
 
         poll_until(clear, timeout=self.timeout, wait=0.1)
 
@@ -516,11 +511,11 @@ class AgilexBus:
         if not self.is_connected:
             raise BusNotConnectedError
 
-        supported_nero = isinstance(self.arm, NeroDriverV111)
-        is_piper = isinstance(self.arm, PiperDriverDefault)
+        supported_nero = isinstance(self.robot, NeroDriverV111)
+        is_piper = isinstance(self.robot, PiperDriverDefault)
 
         if supported_nero or is_piper:
-            self.arm.calibrate_joint(self._cast_idx(index + 1))
+            self.robot.calibrate_joint(self._cast_idx(index + 1))
             return
 
         raise NotImplementedError

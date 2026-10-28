@@ -61,19 +61,19 @@ class Gripper:
 
 
 class AgilexGripper:
-    def __init__(self, ee: AgxGripperDriverDefault, *, timeout: float = 1.0):
-        self.ee = ee
+    def __init__(self, end_effector: AgxGripperDriverDefault, *, timeout: float = 1.0):
+        self.end_effector = end_effector
 
         self.timeout = timeout
 
     @property
     def is_connected(self):
-        return self.ee._ctx.get_comm() is not None
+        return self.end_effector._ctx.get_comm() is not None
 
     @classmethod
     def attach_to(cls, bus: AgilexBus):
-        ee = bus.arm.init_effector("agx_gripper")
-        return cls(ee, timeout=bus.timeout)
+        end_effector = bus.robot.init_effector("agx_gripper")
+        return cls(end_effector, timeout=bus.timeout)
 
     def move(
         self,
@@ -86,9 +86,9 @@ class AgilexGripper:
             raise BusNotConnectedError
 
         if width is not None:
-            self.ee.move_gripper_m(width, force)
+            self.end_effector.move_gripper_m(width, force)
         elif angle is not None:
-            self.ee.move_gripper_deg(angle, force)
+            self.end_effector.move_gripper_deg(angle, force)
         else:
             raise TypeError("either width or angle must be specified")
 
@@ -97,7 +97,7 @@ class AgilexGripper:
             raise BusNotConnectedError
 
         def read():
-            gs = self.ee.get_gripper_status()
+            gs = self.end_effector.get_gripper_status()
 
             if gs is None:
                 return None
@@ -135,10 +135,10 @@ class AgilexGripper:
         if not self.is_connected:
             raise BusNotConnectedError
 
-        self.ee.calibrate_gripper(timeout=self.timeout)
+        self.end_effector.calibrate_gripper(timeout=self.timeout)
 
     def reset(self):
         if not self.is_connected:
             raise BusNotConnectedError
 
-        poll_until(self.ee.reset_gripper, timeout=self.timeout, wait=1e-6)
+        poll_until(self.end_effector.reset_gripper, timeout=self.timeout, wait=1e-6)

@@ -34,6 +34,11 @@ dependencies = [
     "typing-extensions>=3.7.4.3",
 ]
 
+[project.optional-dependencies]
+tests = [
+    "pytest",
+]
+
 [tool.ruff]
 line-length = 88
 exclude = ["src/agx_bus/pyAgxArm"]
