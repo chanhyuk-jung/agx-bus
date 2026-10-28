@@ -30,7 +30,7 @@ git checkout main
 echo
 echo "Add in changes"
 echo ----------------
-git subtree merge --squash -P src/agx_bus/pyAgxArm ${STAGING_BRANCH} --message "Update pyAgxArm from https://github.com/agilexrobotics/pyAgxArm/${LATEST_COMMIT}"
+git subtree merge --squash -P src/agx_bus/pyAgxArm ${STAGING_BRANCH} --message "Update pyAgxArm from https://github.com/agilexrobotics/pyAgxArm/commit/${LATEST_COMMIT}"
 
 # clean up
 echo
