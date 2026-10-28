@@ -116,8 +116,6 @@ def test_estop(bus, robot):
 def test_reset(bus, robot):
     bus.reset()
 
-    bus.connect()
-
     status = poll_until(robot.get_arm_status, timeout=1.0, wait=0)
     arm_status = status.msg.arm_status
 

@@ -257,8 +257,6 @@ class AgilexBus:
         self.is_connected = True
 
         self.robot.set_speed_percent(percent=100)
-        self.robot.set_speed_percent(percent=100)
-        time.sleep(0.1)
 
         motor_status = self.read_motor_status()
         self.is_torque_enabled = motor_status.is_torque_enabled
@@ -501,9 +499,12 @@ class AgilexBus:
             raise BusNotConnectedError
 
         self.robot.reset()
-        self.disconnect()
+        self.is_torque_enabled = False
 
         time.sleep(1)
+
+        self.robot.set_speed_percent(percent=100)
+        self.robot.set_speed_percent(percent=100)
 
     def e_stop(self):
         if not self.is_connected:
