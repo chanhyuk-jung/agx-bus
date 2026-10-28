@@ -28,24 +28,19 @@ Continue reading to learn about most of the features of this package.
 Connect to a CAN bus and start reading:
 
 ```python
-import time
-
 bus.connect()
 
-while True:
-    joints = bus.read_joints()
-    gripper = ee.read()
+joints = bus.read_joints()
+gripper = ee.read()
 
-    qpos = joints.position
-    qvel = joints.velocity
+qpos = joints.position
+qvel = joints.velocity
 
-    width = gripper.width
-    force = gripper.force
+width = gripper.width
+force = gripper.force
 
-    print(f"arm: {qpos=}, {qvel=}")
-    print(f"gripper: {width=}, {force=}\n")
-
-    time.sleep(0.1)
+print(f"arm: {qpos=}, {qvel=}")
+print(f"gripper: {width=}, {force=}\n")
 ```
 
 ### Moving
@@ -64,10 +59,9 @@ Make sure to support the arm when you disable torque with `bus.disable_torque()`
 bus.disable_torque()
 ```
 
-The gripper can be used without enabling torque:
+The gripper automatically enables its own torque on move:
 
 ```python
-bus.disable_torque()
 ee.move(width=0.1)
 ```
 
@@ -79,45 +73,43 @@ If you need to quickly stop the robot, trigger e-stop:
 bus.e_stop()
 ```
 
+This does not affect the gripper. Manually disable gripper torque:
+
+```python
+ee.disable_torque()
+```
+
+### Diagnostics
+
+When something goes wrong, read the internal status first:
+
+```python
+status = bus.read_status()
+motor_status = bus.read_motor_status()
+gripper = ee.read()
+
+print(f"arm is ok: {status.is_arm_ok}")
+print(f"comm is ok: {status.is_comm_ok}")
+print(f"limit exceeded: {status.limit_exceeded}")
+print(f"motor is ok: {motor_status.is_motor_ok}")
+print(f"driver is ok: {motor_status.is_driver_ok}")
+
+print(f"gripper motor is ok: {gripper.status.is_motor_ok}")
+print(f"gripper driver is ok: {gripper.status.is_driver_ok}\n")
+```
+
 ### Reset
 
-Make sure to reset the arm to clear e-stop. This will disconnect the bus as the connection will also be reset:
+Make sure to reset the arm to clear e-stop. This will also disable torque:
 
 ```python
 bus.reset()
-
-# wait for the robot arm to reset
-time.sleep(1)
-
-bus.connect()
 ```
 
 You can also reset the gripper:
 
 ```python
 ee.reset()
-```
-
-### Diagnostics
-
-When something goes wrong, read the internals first:
-
-```python
-while True:
-    status = bus.read_status()
-    motor_status = bus.read_motor_status()
-    gripper = ee.read()
-
-    print(f"arm is ok: {status.is_arm_ok}")
-    print(f"comm is ok: {status.is_comm_ok}")
-    print(f"limit exceeded: {status.limit_exceeded}")
-    print(f"motor is ok: {motor_status.is_motor_ok}")
-    print(f"driver is ok: {motor_status.is_driver_ok}")
-
-    print(f"gripper motor is ok: {gripper.status.is_motor_ok()}")
-    print(f"gripper driver is ok: {gripper.status.is_driver_ok()}\n")
-
-    time.sleep(0.1)
 ```
 
 ## Installation

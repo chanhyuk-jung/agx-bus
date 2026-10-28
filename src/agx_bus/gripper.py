@@ -64,6 +64,7 @@ class AgilexGripper:
     def __init__(self, end_effector: AgxGripperDriverDefault, *, timeout: float = 1.0):
         self.end_effector = end_effector
 
+        self.torque_enabled = False
         self.timeout = timeout
 
     @property
@@ -74,6 +75,12 @@ class AgilexGripper:
     def attach_to(cls, bus: AgilexBus):
         end_effector = bus.robot.init_effector("agx_gripper")
         return cls(end_effector, timeout=bus.timeout)
+
+    def disable_torque(self):
+        if not self.is_connected:
+            raise BusNotConnectedError
+
+        poll_until(self.end_effector.disable_gripper, timeout=self.timeout, wait=0.01)
 
     def move(
         self,
