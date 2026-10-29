@@ -274,7 +274,12 @@ class AgilexBus:
             raise BusNotConnectedError
 
         def enable():
-            return self.robot.enable(255)
+            result = set()
+
+            for i in range(self.robot.joint_nums):
+                result.add(self.robot.enable(self._cast_idx(i + 1)))
+
+            return all(result)
 
         poll_until(enable, timeout=self.timeout, wait=0.01)
         self.is_torque_enabled = True
@@ -287,8 +292,7 @@ class AgilexBus:
                 for i in range(self.robot.joint_nums):
                     result.add(self.robot.disable(self._cast_idx(i + 1)))
 
-                disabled = False not in result
-                return disabled
+                return not any(result)
 
             poll_until(disable, timeout=self.timeout, wait=0.01)
             self.is_torque_enabled = False
