@@ -3,8 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
+from pyAgxArm.protocols.can_protocol.drivers import AgxGripperDriverDefault
+
 from .bus import AgilexBus
-from .pyAgxArm.protocols.can_protocol.drivers import AgxGripperDriverDefault
 from .utils import BusNotConnectedError, poll_until
 
 
