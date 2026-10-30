@@ -7,13 +7,13 @@ from typing import Literal, cast
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
-from pyAgxArm import AgxArmFactory, create_agx_arm_config, resolve_firmware_profile
-from pyAgxArm.protocols.can_protocol.drivers import (
+
+from .pyAgxArm import AgxArmFactory, create_agx_arm_config, resolve_firmware_profile
+from .pyAgxArm.protocols.can_protocol.drivers import (
     NeroDriverDefault,
     NeroDriverV111,
     PiperDriverDefault,
 )
-
 from .utils import (
     AgxBusException,
     BusNotConnectedError,

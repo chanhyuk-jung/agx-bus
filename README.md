@@ -1,6 +1,6 @@
 # Agx Bus: Bus interface for AgileX Robotics arms
 
-Agx Bus is a library for robot arms and grippers from AgileX Robotics. By wrapping [pyAgxArm](https://github.com/agilexrobotics/pyAgxArm.git), bug-fixes and features from first-party drivers are supported with a much more simpler API.
+Agx Bus is a library for robot arms and grippers from AgileX Robotics. By vendoring [pyAgxArm](https://github.com/agilexrobotics/pyAgxArm.git), bug-fixes and features from first-party drivers are supported with a much simpler API.
 
 **Why `agx_bus`?**
 
