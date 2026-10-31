@@ -156,7 +156,7 @@ class Joints:
 
 
 @dataclass(frozen=True)
-class DriverStatus:
+class Drivers:
     timestamp: NDArray[np.float64]
 
     driver_voltage: NDArray[np.float64]
@@ -260,7 +260,7 @@ class AgilexBus:
 
         self.robot.set_speed_percent(percent=100)
 
-        motor_status = self.read_motor_status()
+        motor_status = self.read_drivers()
         self.is_torque_enabled = motor_status.is_torque_enabled
 
     def disconnect(self) -> None:
@@ -302,7 +302,7 @@ class AgilexBus:
             raise TorqueNotEnabledError
 
         joints = np.asarray(joints, dtype=np.float64)
-        self.robot.move_j(list(joints))
+        self.robot.move_j(joints.tolist())
 
     def _cast_idx(self, index: int):
         if isinstance(self.robot, PiperDriverDefault):
@@ -340,7 +340,6 @@ class AgilexBus:
 
         def read():
             floats = []
-
             motor_states = [
                 self.robot.get_motor_states(self._cast_idx(i + 1))
                 for i in range(self.robot.joint_nums)
@@ -359,12 +358,11 @@ class AgilexBus:
             floats = np.array(floats).T
 
             return Joints(
-                **dict(
-                    zip(
-                        ["timestamp", "position", "velocity", "torque", "current"],
-                        floats,
-                    )
-                )
+                timestamp=floats[0],
+                position=floats[1],
+                velocity=floats[2],
+                torque=floats[3],
+                current=floats[4],
             )
 
         return poll_until(read, timeout=self.timeout, wait=0)
@@ -411,7 +409,7 @@ class AgilexBus:
 
         return poll_until(read, timeout=self.timeout, wait=0)
 
-    def read_motor_status(self):
+    def read_drivers(self) -> Drivers:
         if not self.is_connected:
             raise BusNotConnectedError
 
@@ -458,7 +456,7 @@ class AgilexBus:
             floats = np.array(floats).T
             bools = np.array(bools).T
 
-            return DriverStatus(
+            return Drivers(
                 **dict(
                     zip(
                         [

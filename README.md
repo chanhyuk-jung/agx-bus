@@ -31,7 +31,7 @@ Connect to a CAN bus and start reading:
 bus.connect()
 
 joints = bus.read_joints()
-gripper = ee.read()
+gripper = ee.read_gripper()
 
 qpos = joints.position
 qvel = joints.velocity
@@ -85,14 +85,15 @@ When something goes wrong, read the internal status first:
 
 ```python
 status = bus.read_status()
-motor_status = bus.read_motor_status()
-gripper = ee.read()
+driver_status = bus.read_drivers()
+gripper = ee.read_driver()
+
 
 print(f"arm is ok: {status.is_arm_ok}")
 print(f"comm is ok: {status.is_comm_ok}")
 print(f"limit exceeded: {status.limit_exceeded}")
-print(f"motor is ok: {motor_status.is_motor_ok}")
-print(f"driver is ok: {motor_status.is_driver_ok}")
+print(f"motor is ok: {driver_status.is_motor_ok}")
+print(f"driver is ok: {driver_status.is_driver_ok}")
 
 print(f"gripper motor is ok: {gripper.status.is_motor_ok}")
 print(f"gripper driver is ok: {gripper.status.is_driver_ok}\n")

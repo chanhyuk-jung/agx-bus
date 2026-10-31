@@ -38,7 +38,7 @@ def bus(channel, name, version):
 
 @pytest.fixture(scope="module")
 def ee(bus):
-    return AgilexGripper.attach_to(bus)
+    return AgilexGripper(bus)
 
 
 @pytest.fixture
@@ -108,7 +108,7 @@ def test_read_joints(bus, robot):
 
 
 def test_read_gripper(ee, end_effector):
-    gripper = ee.read()
+    gripper = ee.read_gripper()
     gs = poll_until(end_effector.get_gripper_status, timeout=1.0, wait=0)
 
     if gs.msg.mode == "width":
@@ -122,7 +122,7 @@ def test_read_gripper(ee, end_effector):
 def test_move_gripper(ee, end_effector):
     width = 0.05
 
-    ee.move(width=width)
+    ee.move_gripper(width=width)
     time.sleep(0.05)
 
     gs = poll_until(end_effector.get_gripper_status, timeout=1.0, wait=0)

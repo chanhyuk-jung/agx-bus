@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import time
-from typing import Any, Callable
+from typing import Callable, TypeVar
+
+T = TypeVar("T")
 
 
 class AgxBusException(IOError):
@@ -26,7 +28,7 @@ class PollingTimeoutException(AgxBusException):
     """Polling timeouts give an exception"""
 
 
-def poll_until(fn: Callable[[], Any], *, timeout: float, wait: float):
+def poll_until(fn: Callable[[], T | None], *, timeout: float, wait: float) -> T:
     t0 = time.perf_counter()
     result = fn()
     while not result:

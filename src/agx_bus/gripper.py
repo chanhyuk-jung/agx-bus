@@ -9,7 +9,7 @@ from .utils import BusNotConnectedError, poll_until
 
 
 @dataclass(frozen=True)
-class Status:
+class Driver:
     low_voltage: bool
     motor_overheating: bool
     overcurrent: bool
@@ -45,8 +45,6 @@ class Gripper:
 
     mode: Literal["width", "angle"]
 
-    status: Status
-
     @property
     def width(self) -> float:
         if self.mode == "width":
@@ -63,8 +61,13 @@ class Gripper:
 
 
 class AgilexGripper:
-    def __init__(self, end_effector: AgxGripperDriverDefault, *, timeout: float = 1.0):
-        self.end_effector = end_effector
+    def __init__(self, bus: AgilexBus, *, timeout: float | None = None):
+        if timeout is None:
+            timeout = bus.timeout
+
+        self.end_effector = AgxGripperDriverDefault(
+            bus.robot.get_config(), bus.robot.get_context()
+        )
 
         self.torque_enabled = False
         self.timeout = timeout
@@ -73,18 +76,13 @@ class AgilexGripper:
     def is_connected(self):
         return self.end_effector._ctx.get_comm() is not None
 
-    @classmethod
-    def attach_to(cls, bus: AgilexBus):
-        end_effector = bus.robot.init_effector("agx_gripper")
-        return cls(end_effector, timeout=bus.timeout)
-
     def disable_torque(self):
         if not self.is_connected:
             raise BusNotConnectedError
 
         poll_until(self.end_effector.disable_gripper, timeout=self.timeout, wait=0.01)
 
-    def move(
+    def move_gripper(
         self,
         *,
         width: float | None = None,
@@ -101,7 +99,7 @@ class AgilexGripper:
         else:
             raise TypeError("either width or angle must be specified")
 
-    def read(self) -> Gripper:
+    def read_gripper(self) -> Gripper:
         if not self.is_connected:
             raise BusNotConnectedError
 
@@ -117,9 +115,30 @@ class AgilexGripper:
             if mode not in ["width", "angle"]:
                 raise RuntimeError(f"Unexpected mode: {mode}")
 
+            return Gripper(
+                timestamp=gs.timestamp,
+                value=msg.value,
+                force=msg.force,
+                mode=mode,
+            )
+
+        return poll_until(read, timeout=self.timeout, wait=0)
+
+    def read_driver(self) -> Driver:
+        if not self.is_connected:
+            raise BusNotConnectedError
+
+        def read():
+            gs = self.end_effector.get_gripper_status()
+
+            if gs is None:
+                return None
+
+            msg = gs.msg
+
             status = msg.foc_status
 
-            status = Status(
+            return Driver(
                 low_voltage=status.voltage_too_low,
                 motor_overheating=status.motor_overheating,
                 overcurrent=status.driver_overcurrent,
@@ -128,14 +147,6 @@ class AgilexGripper:
                 error=status.driver_error_status,
                 torque_enabled=status.driver_enable_status,
                 homing=status.homing_status,
-            )
-
-            return Gripper(
-                timestamp=gs.timestamp,
-                value=msg.value,
-                force=msg.force,
-                mode=mode,
-                status=status,
             )
 
         return poll_until(read, timeout=self.timeout, wait=0)

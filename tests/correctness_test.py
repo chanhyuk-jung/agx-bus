@@ -1,6 +1,11 @@
 import pytest
 
-from agx_bus import AgilexBus, BusNotConnectedError, TorqueNotEnabledError
+from agx_bus import (
+    AgilexBus,
+    AgilexGripper,
+    BusNotConnectedError,
+    TorqueNotEnabledError,
+)
 
 
 @pytest.fixture
@@ -8,6 +13,11 @@ def bus():
     bus = AgilexBus("virtual-can", interface="virtual", name="piper", version="default")
 
     return bus
+
+
+@pytest.fixture
+def ee(bus):
+    return AgilexGripper(bus)
 
 
 def test_not_connected_enable_torque(bus):
@@ -25,9 +35,9 @@ def test_not_connected_read_status(bus):
         bus.read_status()
 
 
-def test_not_connected_read_motor_status(bus):
+def test_not_connected_read_drivers(bus):
     with pytest.raises(BusNotConnectedError):
-        bus.read_motor_status()
+        bus.read_drivers()
 
 
 def test_not_connected_reset(bus):
@@ -45,3 +55,13 @@ def test_disabled_torque_move_joints(bus):
 
     with pytest.raises(TorqueNotEnabledError):
         bus.move_joints([0.0] * 6)
+
+
+def test_not_connected_move_gripper(ee):
+    with pytest.raises(BusNotConnectedError):
+        ee.move_gripper(width=0.1)
+
+
+def test_not_connected_read_gripper(ee):
+    with pytest.raises(BusNotConnectedError):
+        ee.read_gripper()
