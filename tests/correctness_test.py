@@ -30,9 +30,9 @@ def test_not_connected_read_joints(bus):
         bus.read_joints()
 
 
-def test_not_connected_read_status(bus):
+def test_not_connected_read_state(bus):
     with pytest.raises(BusNotConnectedError):
-        bus.read_status()
+        bus.read_state()
 
 
 def test_not_connected_read_drivers(bus):
@@ -65,3 +65,8 @@ def test_not_connected_move_gripper(ee):
 def test_not_connected_read_gripper(ee):
     with pytest.raises(BusNotConnectedError):
         ee.read_gripper()
+
+
+def test_not_connected_gripper_read_state(ee):
+    with pytest.raises(BusNotConnectedError):
+        ee.read_driver()

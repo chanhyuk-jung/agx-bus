@@ -9,7 +9,7 @@ from .utils import BusNotConnectedError, poll_until
 
 
 @dataclass(frozen=True)
-class Driver:
+class DriverState:
     low_voltage: bool
     motor_overheating: bool
     overcurrent: bool
@@ -124,7 +124,7 @@ class AgilexGripper:
 
         return poll_until(read, timeout=self.timeout, wait=0)
 
-    def read_driver(self) -> Driver:
+    def read_driver(self) -> DriverState:
         if not self.is_connected:
             raise BusNotConnectedError
 
@@ -138,7 +138,7 @@ class AgilexGripper:
 
             status = msg.foc_status
 
-            return Driver(
+            return DriverState(
                 low_voltage=status.voltage_too_low,
                 motor_overheating=status.motor_overheating,
                 overcurrent=status.driver_overcurrent,

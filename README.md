@@ -17,7 +17,7 @@ Create the bus and attach a gripper:
 ```python
 from agx_bus import AgilexBus, AgilexGripper
 
-bus = AgilexBus("can0", name="piper", version="default")
+bus = AgilexBus("can0", name="piper")
 ee = AgilexGripper.attach_to(bus)
 ```
 
@@ -62,7 +62,7 @@ bus.disable_torque()
 The gripper automatically enables its own torque on move:
 
 ```python
-ee.move(width=0.1)
+ee.move_gripper(width=0.1)
 ```
 
 ### Emergency Stop
@@ -81,22 +81,24 @@ ee.disable_torque()
 
 ### Diagnostics
 
-When something goes wrong, read the internal status first:
+When something goes wrong, read the internal state first:
 
 ```python
-status = bus.read_status()
-driver_status = bus.read_drivers()
-gripper = ee.read_driver()
+state = bus.read_state()
+
+driver_states = bus.read_drivers()
+gripper_state = ee.read_driver()
 
 
-print(f"arm is ok: {status.is_arm_ok}")
-print(f"comm is ok: {status.is_comm_ok}")
-print(f"limit exceeded: {status.limit_exceeded}")
-print(f"motor is ok: {driver_status.is_motor_ok}")
-print(f"driver is ok: {driver_status.is_driver_ok}")
+print(f"arm is ok: {state.is_arm_ok}")
+print(f"comm is ok: {state.is_comm_ok}")
+print(f"limit exceeded: {state.limit_exceeded}")
 
-print(f"gripper motor is ok: {gripper.status.is_motor_ok}")
-print(f"gripper driver is ok: {gripper.status.is_driver_ok}\n")
+print(f"motor is ok: {driver_states.is_motor_ok}")
+print(f"driver is ok: {driver_states.is_driver_ok}")
+
+print(f"gripper motor is ok: {gripper_state.is_motor_ok}")
+print(f"gripper driver is ok: {gripper_state.is_driver_ok}\n")
 ```
 
 ### Reset

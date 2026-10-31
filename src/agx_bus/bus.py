@@ -65,16 +65,6 @@ class MoveType(IntEnum):
     UNKNOWN = 0xFF
 
 
-class NewMoveType(IntEnum):
-    POSITION = 0x00
-    JOINT = 0x01
-    LINE = 0x02
-    CURVE = 0x03
-    CPV = 0x05
-    MIT = 0x06
-    UNKNOWN = 0xFF
-
-
 @unique
 class TeachingStatus(IntEnum):
     DISABLED = 0x00  # Stop
@@ -96,7 +86,7 @@ class MotionStatus(IntEnum):
 
 
 @dataclass(frozen=True)
-class Status:
+class State:
     arm: ArmStatus
     control: ControlType
     move: MoveType
@@ -156,7 +146,7 @@ class Joints:
 
 
 @dataclass(frozen=True)
-class Drivers:
+class DriverStates:
     timestamp: NDArray[np.float64]
 
     driver_voltage: NDArray[np.float64]
@@ -367,7 +357,7 @@ class AgilexBus:
 
         return poll_until(read, timeout=self.timeout, wait=0)
 
-    def read_status(self) -> Status:
+    def read_state(self) -> State:
         if not self.is_connected:
             raise BusNotConnectedError
 
@@ -396,7 +386,7 @@ class AgilexBus:
             if mode == 0x06:
                 mode = MoveType.MIT
 
-            return Status(
+            return State(
                 ArmStatus(msg.arm_status),
                 ControlType(msg.ctrl_mode),
                 MoveType(mode),
@@ -409,7 +399,7 @@ class AgilexBus:
 
         return poll_until(read, timeout=self.timeout, wait=0)
 
-    def read_drivers(self) -> Drivers:
+    def read_drivers(self) -> DriverStates:
         if not self.is_connected:
             raise BusNotConnectedError
 
@@ -456,7 +446,7 @@ class AgilexBus:
             floats = np.array(floats).T
             bools = np.array(bools).T
 
-            return Drivers(
+            return DriverStates(
                 **dict(
                     zip(
                         [
