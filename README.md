@@ -18,7 +18,7 @@ Create the bus and attach a gripper:
 from agx_bus import AgilexBus, AgilexGripper
 
 bus = AgilexBus("can0", name="piper")
-ee = AgilexGripper.attach_to(bus)
+ee = AgilexGripper(bus)
 ```
 
 Continue reading to learn about most of the features of this package.
