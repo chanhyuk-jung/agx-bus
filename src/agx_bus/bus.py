@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from enum import IntEnum, unique
+from enum import IntEnum
 from typing import Literal, cast
 
 import numpy as np
@@ -22,7 +22,7 @@ from .utils import (
 )
 
 
-class ControlType(IntEnum):
+class ControlStatus(IntEnum):
     STANDBY = 0x00
     CAN = 0x01
     TEACHING = 0x02
@@ -65,7 +65,6 @@ class MoveType(IntEnum):
     UNKNOWN = 0xFF
 
 
-@unique
 class TeachingStatus(IntEnum):
     DISABLED = 0x00  # Stop
     START_RECORDING = 0x01  # Start recording (enter drag-to-teach mode)
@@ -78,7 +77,6 @@ class TeachingStatus(IntEnum):
     UNKNOWN = 0xFF
 
 
-@unique
 class MotionStatus(IntEnum):
     REACHED = 0x00
     MOVING = 0x01
@@ -88,7 +86,7 @@ class MotionStatus(IntEnum):
 @dataclass(frozen=True)
 class State:
     arm: ArmStatus
-    control: ControlType
+    control: ControlStatus
     move: MoveType
 
     motion: MotionStatus
@@ -101,9 +99,9 @@ class State:
 
     @property
     def is_standby(self) -> bool | None:
-        if self.control == ControlType.STANDBY:
+        if self.control == ControlStatus.STANDBY:
             return True
-        elif self.control == ControlType.CAN:
+        elif self.control == ControlStatus.CAN:
             return False
 
         return None
@@ -388,7 +386,7 @@ class AgilexBus:
 
             return State(
                 ArmStatus(msg.arm_status),
-                ControlType(msg.ctrl_mode),
+                ControlStatus(msg.ctrl_mode),
                 MoveType(mode),
                 MotionStatus(msg.motion_status),
                 TeachingStatus(msg.teach_status),
