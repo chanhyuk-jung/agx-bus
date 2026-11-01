@@ -55,7 +55,7 @@ class ArmStatus(IntEnum):
     UNKNOWN = 0xFF
 
 
-class MoveType(IntEnum):
+class MoveMode(IntEnum):
     POSITION = 0x00
     JOINT = 0x01
     LINE = 0x02
@@ -87,7 +87,7 @@ class MotionStatus(IntEnum):
 class State:
     arm: ArmStatus
     control: ControlStatus
-    move: MoveType
+    move_mode: MoveMode
 
     motion: MotionStatus
     teaching: TeachingStatus
@@ -382,12 +382,12 @@ class AgilexBus:
 
             # MIT = 0x06 for Piper firmware < v188, Nero firmware < 1.11
             if mode == 0x06:
-                mode = MoveType.MIT
+                mode = MoveMode.MIT
 
             return State(
                 ArmStatus(msg.arm_status),
                 ControlStatus(msg.ctrl_mode),
-                MoveType(mode),
+                MoveMode(mode),
                 MotionStatus(msg.motion_status),
                 TeachingStatus(msg.teach_status),
                 msg.trajectory_num,
