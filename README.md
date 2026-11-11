@@ -12,7 +12,13 @@ Agx Bus is a library for robot arms and grippers from AgileX Robotics. By vendor
 
 ## Quick Start
 
-Create the bus and attach a gripper:
+First, make sure the CAN bus interface is up:
+
+```bash
+sudo ip link set can0 up type can bitrate 1000000
+```
+
+Then, create the bus and attach a gripper:
 
 ```python
 from agx_bus import AgilexBus, AgilexGripper
